@@ -1,0 +1,13 @@
+Run this first:
+
+nmcli device
+
+copy wlan device name:
+wlp58s0
+
+sudo nmcli device wifi hotspot ifname wlp58s0 ssid ASIF password 12345678
+
+nmcli dev wifi show-password
+
+
+sudo nmcli connection down "ASIF"

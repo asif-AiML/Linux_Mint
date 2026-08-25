@@ -1,0 +1,29 @@
+Hashing in Linux
+
+Open the terminal at that path where file is stored:
+
+1. Display SHA-512 hash (no output file:
+
+sha512sum <filename.type>
+eg:
+sha512sum onlyoffice-desktopeditors_amd64.deb
+
+2. Save only the hash string to a text file :
+
+sha512sum <filename.type> | cut -d' ' -f1 > filename.sha512>
+eg:
+sha512sum onlyoffice-desktopeditors_amd64.deb | cut -d' ' -f1 > onlyoffice-desktopeditors_amd64.sha512
+
+
+To check for 128 characters:
+hash=$(sha512sum onlyoffice-desktopeditors_amd64.deb | cut -d' ' -f1); echo "$hash"; echo "Length: ${#hash}"
+
+3. To Create hash file :
+
+sha512sum photo.png>photo.png.sha512
+
+4. To check: keep the file (e.g, photo.png)and hash file (photo.png.sha512) in the same folder, open terminal there:
+
+sha512sum -c photo.png.sha512
+
+Output : photo.png: OK (means the file is original)

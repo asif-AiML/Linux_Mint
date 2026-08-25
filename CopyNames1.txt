@@ -1,0 +1,12 @@
+mkdir -p ~/.local/share/nemo/scripts
+
+cat > "$HOME/.local/share/nemo/scripts/Copy file names" <<'EOF'
+#!/usr/bin/env bash
+[ "$#" -eq 0 ] && exit 0
+printf '%s\n' "${@##*/}" | xclip -selection clipboard
+EOF
+
+chmod +x "$HOME/.local/share/nemo/scripts/Copy file names"
+
+
+
