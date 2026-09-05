@@ -6,7 +6,7 @@
 **OS:** Linux Mint 22.3 (Zena), Ubuntu Noble base  
 **Kernel during testing:** `7.0.0-30-generic`  
 **Current target:** native libfprint MR !626 Validity driver  
-**Current state:** MR !626 now recognizes, opens, identifies, calibrates, and captures from the physical `06cb:00b7` reader successfully when supplied with the required Validity data. The first real enrollment capture (`stage 0`) succeeds, but a full 8-scan enrollment has **not yet been proven**. Verification and fprintd/PAM integration therefore remain blocked until the enrollment state-machine behavior is understood.
+**Current state:** **Native build-tree enrollment now succeeds completely.** MR !626 recognizes, opens, identifies, calibrates, captures from, and enrolls the physical `06cb:00b7` / 57K0 / `0xd51` reader successfully when supplied with the required Validity data. The missing enrollment blocker was the per-device `db_write_enable.bin` payload. Correct-finger verification is the immediate next milestone before fprintd/PAM integration.
 
 ---
 
@@ -14,16 +14,23 @@
 
 The built-in fingerprint reader works correctly under Windows but is not exposed by the stable fingerprint stack shipped with Linux Mint.
 
-The objective is to make the reader work natively through libfprint/fprintd and eventually integrate it safely with desktop/login authentication.
+The objective is to make the reader work natively through libfprint/fprintd and eventually integrate it safely with normal daily authentication such as:
+
+- desktop login,
+- lock-screen unlock,
+- `sudo`,
+- other PAM-backed authentication paths where appropriate.
 
 Success milestones:
 
 1. libfprint recognizes and opens the sensor. **DONE**
-2. Finger detection and real fingerprint capture work. **DONE**
-3. Full multi-scan enrollment succeeds. **CURRENT BLOCKER**
-4. Verification distinguishes the correct finger from an incorrect finger.
-5. fprintd integration works reliably.
-6. PAM/login/sudo integration works reliably.
+2. Finger detection and real capture work. **DONE**
+3. Full native multi-scan enrollment succeeds. **DONE**
+4. Correct-finger verification succeeds and wrong-finger verification rejects. **NEXT**
+5. Normal non-root device access works.
+6. fprintd integration works reliably.
+7. PAM/login/sudo integration works reliably.
+8. Suspend/resume behavior is stable.
 
 ---
 
@@ -34,22 +41,22 @@ The work was initially described as two paths:
 - **Path 1:** practical reuse/integration of existing native support.
 - **Path 2:** deeper protocol/driver engineering if existing support is incomplete.
 
-This is now treated only as a complexity distinction, not a hard project boundary. If deeper source work, protocol analysis, USB tracing, or driver changes become necessary, they are simply the next engineering phase of the same project.
+This distinction is now only a complexity marker, not a hard project boundary. Deeper source work, protocol analysis, USB tracing, or driver changes are treated as the next engineering phase of the same fingerprint project.
 
-The runtime target remains native libfprint. `python-validity` is used only as a reference/evidence source where its recent work covers the same hardware family.
+The runtime target remains native libfprint. `python-validity` is used only as an upstream reference/evidence source where its recent work covers the same hardware family.
 
 ---
 
 ## 3. Baseline
 
-Stock Mint fingerprint packages were already installed:
+Installed fingerprint packages included:
 
 - `fprintd`
 - `libfprint-2-2`
 - `libfprint-2-tod1`
 - `libpam-fprintd`
 
-The stock device test returned:
+The stock Mint/Noble stack returned:
 
 ```text
 No devices available
@@ -61,18 +68,17 @@ USB enumeration showed:
 06cb:00b7 Synaptics, Inc. Fingerprint reader [HP G6]
 ```
 
-The reader is vendor-specific USB hardware and works correctly under Windows.
+The same physical reader works correctly under Windows.
 
 ---
 
 ## 4. Native libfprint MR !626
 
-libfprint merge request **!626** contains a native Validity/Synaptics implementation with explicit support references for this sensor.
+libfprint merge request **!626** contains a native Validity/Synaptics implementation with explicit support for this family.
 
 Important source evidence includes:
 
 - `VALIDITY_DEV_B7` for `06cb:00b7`,
-- HAL entry for PID `0x00b7`,
 - HP EliteBook 840 G6 references,
 - firmware-extension handling for `06cb:00b7`,
 - sensor mapping to the 57K0 family and type `0x0d51`,
@@ -84,13 +90,13 @@ The branch was fetched as:
 mr-626
 ```
 
-The experimental driver has not been installed over the system libfprint; tests are still being performed directly from the build tree.
+The experimental driver is still being tested from the build tree and has **not** been installed over the system libfprint.
 
 ---
 
-## 5. Build environment and successful build
+## 5. Build environment
 
-Main workspace:
+Workspace:
 
 ```text
 ~/fingerprint-path1
@@ -113,40 +119,43 @@ APT development packages added during build troubleshooting:
 - `libssl-dev`
 - `gobject-introspection`
 
-After dependency issues were resolved, MR !626 built completely:
+MR !626 built completely:
 
 ```text
 [120/120]
 ```
 
+No `ninja install` has been performed.
+
 ---
 
 ## 6. First runtime blockers
 
-The first build-tree enrollment attempt selected the Validity driver but failed because the USB device could not be opened by the normal user:
+The first build-tree test selected the Validity driver but normal-user USB access failed:
 
 ```text
 USB error on device 06cb:00b7 : Access denied
 ```
 
-A temporary elevated test removed that blocker without adding a permanent udev rule.
+Temporary elevated testing removed that blocker without adding a permanent udev rule.
 
-The next failure was:
+The next blocker was missing external Validity data:
 
 ```text
 Device data files not found for 06cb:00b7.
 Install the libfprint-validity-data package.
 ```
 
-The driver expected a device directory such as:
+The driver searches paths including:
 
 ```text
 /usr/local/share/libfprint/validity/06cb_00b7/
 ```
 
-with mandatory `init.bin` and optional files including:
+Device-specific files include:
 
 ```text
+init.bin
 init_clean_slate.bin
 reset.bin
 db_write_enable.bin
@@ -154,7 +163,7 @@ db_write_enable.bin
 
 ---
 
-## 7. Windows driver and firmware investigation
+## 7. Exact hardware / firmware evidence
 
 The exact Windows driver package for:
 
@@ -162,73 +171,21 @@ The exact Windows driver package for:
 USB\VID_06CB&PID_00B7
 ```
 
-was obtained and extracted.
-
-It contains:
+contains:
 
 ```text
 6_07f_hp_cmit_mis_qm.xpfwext
 ```
 
-which exactly matches MR !626's firmware-extension mapping for `06cb:00b7`.
+which matches MR !626's firmware-extension mapping for `06cb:00b7`.
 
-Later runtime logs showed:
+Native runtime later reported:
 
 ```text
 Firmware extension is loaded
 ```
 
-so firmware extension loading was not the remaining blocker on this machine.
-
----
-
-## 8. libfprint-validity-data investigation
-
-A published `libfprint-validity-data` package was downloaded and extracted locally instead of forcing an unsupported PPA onto Noble.
-
-It contained data for:
-
-```text
-06cb_009a
-138a_0090
-138a_0097
-138a_009d
-```
-
-but no:
-
-```text
-06cb_00b7
-```
-
-The source package revealed `generate_data.py`, which converts existing python-validity-style payload definitions into libfprint `.bin` files by appending a 32-byte HMAC-SHA256 integrity trailer.
-
-The relevant mapping is:
-
-```text
-init_hardcoded             -> init.bin
-init_hardcoded_clean_slate -> init_clean_slate.bin
-reset_blob                 -> reset.bin
-db_write_enable            -> db_write_enable.bin
-```
-
-The generator does not synthesize protocol payloads from VID/PID; it packages already-known payloads.
-
----
-
-## 9. Why python-validity appeared again
-
-The runtime solution did **not** switch back to python-validity.
-
-Recent `python-validity` PR #256 became useful because it specifically covers sensor type `0xd51` and the exact USB ID `06cb:00b7`. It provided evidence that established normal initialization data can be reused for this family and that earlier failures were caused by deeper capture/protocol behavior rather than necessarily requiring a unique B7 initialization blob.
-
-That evidence justified a controlled native-libfprint experiment using only the normal initialization payload while deliberately avoiding reset/clean-slate payloads.
-
----
-
-## 10. Device identity confirmed
-
-A debug build-tree run showed the firmware tuple:
+The firmware tuple was read successfully:
 
 ```text
 Version: 6.7
@@ -237,26 +194,54 @@ Build Num: 164
 Build Time: 1415491824
 ```
 
-The later successful open path identified the hardware directly:
+The driver then identified the hardware directly as:
 
 ```text
 Device: 57K0 FM-3439-001 (type=0x0d51)
 Sensor type: 0x0d51, 120 bytes/line, 2x repeat
 ```
 
-This confirms that this HP EliteBook 840 G6 contains the `0xd51` / 57K0 variant, not the alternate `0x969` silicon that has also appeared under USB PID `06cb:00b7` on some HP systems.
+This confirms the machine contains the `0xd51` / 57K0 variant.
 
 ---
 
-## 11. Creating the missing `06cb_00b7/init.bin`
+## 8. Validity data investigation
 
-A small local helper was created in VS Code:
+A published `libfprint-validity-data` package was downloaded and extracted locally instead of forcing an unsupported PPA onto Noble.
+
+It contained device directories for:
+
+```text
+06cb_009a
+138a_0090
+138a_0097
+138a_009d
+```
+
+but no `06cb_00b7` directory.
+
+The upstream generator maps python-validity-style payloads as follows:
+
+```text
+init_hardcoded             -> init.bin
+init_hardcoded_clean_slate -> init_clean_slate.bin
+reset_blob                 -> reset.bin
+db_write_enable            -> db_write_enable.bin
+```
+
+Generated `.bin` files include a 32-byte HMAC-SHA256 integrity trailer expected by the native driver.
+
+---
+
+## 9. Creating `06cb_00b7/init.bin`
+
+A local helper was created:
 
 ```text
 ~/fingerprint-path1/generate_b7_init.py
 ```
 
-It reads only `init_hardcoded` from the existing `blobs_9a.py`, appends the same HMAC-SHA256 integrity trailer expected by MR !626, and writes:
+It uses the established `init_hardcoded` payload from `blobs_9a.py`, appends the expected HMAC trailer, and writes:
 
 ```text
 output/06cb_00b7/init.bin
@@ -266,20 +251,18 @@ Result:
 
 ```text
 Payload size: 581 bytes
-HMAC size:    32 bytes
-Total size:   613 bytes
+HMAC size: 32 bytes
+Total size: 613 bytes
 ```
 
-The generated file was verified using the package's own verifier:
+The upstream verifier reported:
 
 ```text
 OK   init.bin (581 bytes)
 Verified: 1 OK, 0 FAILED
 ```
 
-Only `init.bin` was generated. No `reset.bin`, `init_clean_slate.bin`, or `db_write_enable.bin` was synthesized for the B7 device.
-
-The verified file was exposed through a reversible symlink under:
+The verified file is exposed through a reversible symlink:
 
 ```text
 /usr/local/share/libfprint/validity/06cb_00b7/init.bin
@@ -287,21 +270,15 @@ The verified file was exposed through a reversible symlink under:
 
 ---
 
-## 12. Common Validity data blocker
+## 10. Common Validity data
 
-The next native run successfully loaded the new device-specific file:
-
-```text
-Loaded data file: /usr/local/share/libfprint/validity/06cb_00b7/init.bin (581 bytes)
-```
-
-and then stopped because common data were missing:
+After `init.bin` loaded successfully, runtime stopped at a missing common file:
 
 ```text
 Common data file 'partition_sig_standard.bin' not found.
 ```
 
-The already-extracted package contained the required common files:
+The required common files were already present in the extracted package:
 
 ```text
 partition_sig_standard.bin
@@ -313,77 +290,33 @@ fw_pubkey_x.bin
 fw_pubkey_y.bin
 ```
 
-These were exposed through reversible symlinks under:
+These are exposed through reversible symlinks under:
 
 ```text
 /usr/local/share/libfprint/validity/
 ```
 
-No experimental libfprint installation was performed.
-
 ---
 
-## 13. Major milestone: native device open + real capture SUCCESS
+## 11. Native open / TLS / calibration success
 
-After the verified `06cb_00b7/init.bin` and common Validity files were available, the third build-tree enrollment run progressed through the full native driver initialization path.
+With `init.bin` and common data available, the build-tree driver progressed through the full open path.
 
-### External data loaded successfully
-
-The driver loaded:
-
-```text
-init.bin (581 bytes)
-partition_sig_standard.bin
-partition_sig_0090.bin
-ca_pubkey.bin
-tls_password.bin
-gwk_sign.bin
-fw_pubkey_x.bin
-fw_pubkey_y.bin
-```
-
-and reported:
-
-```text
-Loaded external data files for 06cb:00b7
-Sending init_hardcoded (581 bytes)
-```
-
-The optional B7 files remained absent without preventing startup:
-
-```text
-init_clean_slate.bin
-reset.bin
-db_write_enable.bin
-```
-
-### Pairing/TLS state succeeded
-
-The reader's flash was inspected and the existing TLS keys were accepted:
-
-```text
-TLS keys verified on flash — pairing not needed
-```
-
-The driver successfully loaded the TLS private key, certificate, and ECDH public key and completed the TLS handshake:
+The reader accepted the initialization data and existing pairing state. Runtime reported:
 
 ```text
 TLS handshake completed successfully
 TLS session established (secure_rx=1 secure_tx=1)
 ```
 
-### Exact physical sensor identification succeeded
-
-The native driver identified the sensor as:
+The exact sensor was identified as:
 
 ```text
 Device: 57K0 FM-3439-001 (type=0x0d51)
 Sensor type: 0x0d51, 120 bytes/line, 2x repeat
 ```
 
-### Calibration succeeded
-
-The driver performed three sensor-calibration iterations, reading calibration data from endpoint `0x82`, and finished with:
+Three calibration iterations completed and the driver reported:
 
 ```text
 Sensor calibration complete
@@ -391,101 +324,173 @@ OPEN_NUM_STATES completed successfully
 Validity sensor opened successfully
 ```
 
-This proves the reader can complete the full native open state machine under Linux.
+The reader then correctly entered interactive enrollment mode, detected a real finger, and captured enrollment stage 0 successfully.
 
-### Enrollment became genuinely interactive
+---
 
-The program printed:
+## 12. Enrollment blocker discovered: missing `db_write_enable.bin`
 
-```text
-Opened device.
-It's now time to enroll your finger.
-You will need to successfully scan your right index finger 8 times to complete the process.
-Scan your finger now.
-```
+The first enrollment attempt appeared to stop immediately after the first scan.
 
-The pause at this point was correct behavior: the process was waiting for a physical finger.
-
-When the right index finger was placed on the sensor, the driver reported:
-
-```text
-Finger detected on sensor
-```
-
-and libfprint's finger state changed from:
-
-```text
-FP_FINGER_STATUS_NEEDED
-```
-
-to:
-
-```text
-FP_FINGER_STATUS_PRESENT
-```
-
-The log then showed real capture interrupts and a first enrollment capture:
+The log reached:
 
 ```text
 Enroll capture (stage 0): ... error=0x00000000
 ```
 
-This is a major functional success: the native driver is not merely recognizing the hardware; it is operating the sensor and capturing a real fingerprint.
+and later entered numeric enrollment state 21.
 
-### Important correction: full enrollment was NOT completed
-
-The first interpretation of this run was too optimistic. The example explicitly requires **8 successful scans**, but the captured log proves only the first enrollment sample (`stage 0`). There is no evidence of later stages completing, no final successful enrollment callback, and no locally persisted `test-storage.variant` fingerprint record.
-
-A later verification attempt therefore failed immediately with:
+Inspection of `ValidityEnrollState` mapped state 21 to:
 
 ```text
-Error loading storage, assuming it is empty
-Failed to load fingerprint data
-Did you remember to enroll your right index finger first?
+ENROLL_DB_WRITE_ENABLE
 ```
 
-Inspection of the example source confirmed that a completed enrollment should call `print_data_save(...)`, which writes the local test storage file. Because that file was never created, the current evidence is consistent with enrollment stopping after the first capture rather than completing all eight scans.
+The relevant state calls:
 
-The present investigation is therefore focused on the state-machine behavior immediately after `Enroll capture (stage 0)`.
+```c
+const guint8 *blob = validity_db_get_write_enable_blob (self, &blob_len);
+vcsfw_tls_cmd_send (self, ssm, blob, blob_len, NULL);
+```
+
+`validity_db_get_write_enable_blob()` directly retrieves `VALIDITY_DATA_DB_WRITE_ENABLE` from the loaded data store.
+
+Inspection of `validity_data_get_bytes()` confirmed that when the blob is absent it returns:
+
+```text
+NULL
+```
+
+with length:
+
+```text
+0
+```
+
+This matched the runtime behavior exactly: the enrollment state machine reached the write-enable stage and then could not proceed normally.
+
+The previously absent `db_write_enable.bin` therefore changed from an apparently optional startup file into the concrete enrollment blocker.
 
 ---
 
-## 14. What is proven now
+## 13. Creating and verifying `06cb_00b7/db_write_enable.bin`
+
+`src/blobs_9a.py` contains an established `db_write_enable` payload.
+
+The upstream generator already produces:
+
+```text
+06cb_009a/db_write_enable.bin
+```
+
+with:
+
+```text
+3621 bytes payload
+3653 bytes total including HMAC
+```
+
+Because the B7 investigation already established reuse of the corresponding 9a-family data for this `0xd51` path, the generated and HMAC-protected `06cb_009a/db_write_enable.bin` was copied into:
+
+```text
+output/06cb_00b7/db_write_enable.bin
+```
+
+The package verifier then confirmed both B7 files as valid:
+
+```text
+init.bin              OK
+db_write_enable.bin   OK
+```
+
+The write-enable blob is now exposed through the reversible symlink:
+
+```text
+/usr/local/share/libfprint/validity/06cb_00b7/db_write_enable.bin
+```
+
+No reset or clean-slate payload was added.
+
+---
+
+## 14. MAJOR MILESTONE: FULL NATIVE ENROLLMENT SUCCESS
+
+A new build-tree enrollment run (`enroll-runtime-4.txt`) was started after exposing the verified `db_write_enable.bin`.
+
+This time the interaction continued across repeated finger placements instead of terminating after stage 0. The user physically touched the sensor seven times during the successful run.
+
+The decisive final runtime lines were:
+
+```text
+ENROLL_NUM_STATES completed successfully
+Device reported enroll completion (... error: none)
+Print for finger FP_FINGER_RIGHT_INDEX enrolled
+Completing action FPI_DEVICE_ACTION_ENROLL in idle!
+```
+
+This is definitive evidence that the native libfprint enrollment state machine completed and libfprint accepted the right-index fingerprint as enrolled.
+
+The device then closed normally:
+
+```text
+Device reported close completion (error: none)
+```
+
+Therefore, **full native build-tree enrollment is now proven on the physical HP EliteBook 840 G6 reader.**
+
+### Local example-storage warning
+
+Immediately after successful enrollment, the example attempted to save a local print reference and logged:
+
+```text
+Device has storage, saving a print reference locally
+Error loading storage, assuming it is empty
+```
+
+This warning occurs after device enrollment has already succeeded. It refers to the example program's local `test-storage.variant` persistence layer, not to failure of sensor enrollment itself.
+
+The next test is to confirm that `test-storage.variant` was created and then perform correct-finger and wrong-finger verification.
+
+---
+
+## 15. What is proven now
 
 ### Proven on this machine
 
 - Physical reader is `06cb:00b7`.
 - Stock Mint/Noble libfprint does not expose it normally.
-- MR !626 explicitly supports the family and builds completely (`120/120`).
-- The build-tree Validity driver recognizes the reader.
-- Firmware is read successfully as version 6.7 / product 48 / build 164 / timestamp 1415491824.
+- MR !626 builds completely (`120/120`).
+- Native Validity driver recognizes the reader.
+- Firmware reads successfully.
 - Firmware extension is already loaded.
-- The hardware identifies directly as `57K0 FM-3439-001`, type `0x0d51`.
-- A normal `init_hardcoded` payload reused from the established blob family is accepted by the device.
-- The generated `06cb_00b7/init.bin` passes the data package's HMAC verifier.
-- The common Validity files are accepted.
-- Existing TLS flash keys are valid; re-pairing is not required.
+- Exact hardware identifies as `57K0 FM-3439-001`, type `0x0d51`.
+- Reused 9a-family `init_hardcoded` data is accepted.
+- Generated `06cb_00b7/init.bin` passes HMAC verification.
+- Common Validity data are accepted.
+- Existing TLS pairing state is valid.
 - TLS handshake succeeds.
 - Sensor calibration succeeds.
-- The native driver opens the reader successfully.
-- The reader detects a real finger.
-- A real fingerprint capture succeeds at enrollment `stage 0`.
+- Device opens successfully.
+- Real finger detection works.
+- Real fingerprint capture works.
+- `db_write_enable.bin` was identified as the blocker after the first capture.
+- Reused 9a-family write-enable data passes HMAC verification for the B7 test directory.
+- **Full native build-tree right-index enrollment succeeds.**
 
-### Not yet proven
+### Still to prove
 
-- Full 8-scan enrollment completion.
-- Creation of a persistent enrolled-print record.
-- Verification of the correct finger.
-- Rejection of a wrong finger.
+- Local example storage file creation.
+- Correct-finger verification.
+- Wrong-finger rejection.
 - Normal non-root device access through an appropriate udev rule.
 - Reliable fprintd integration using the native driver.
-- System installation strategy for the experimental/native driver and required data.
+- Clean system installation/integration strategy for the experimental driver and data.
 - PAM/sudo/login/lock-screen integration.
 - Suspend/resume reliability.
 
 ---
 
-## 15. Current system changes
+## 16. Current system changes
 
 Most experimental work remains under:
 
@@ -493,18 +498,11 @@ Most experimental work remains under:
 ~/fingerprint-path1
 ```
 
-APT development packages installed:
-
-- `libgusb-dev`
-- `libusb-1.0-0-dev`
-- `libjson-glib-dev`
-- `libssl-dev`
-- `gobject-introspection`
-
-Temporary/reversible filesystem exposure under `/usr/local`:
+Temporary/reversible filesystem exposure under `/usr/local` now includes:
 
 ```text
 /usr/local/share/libfprint/validity/06cb_00b7/init.bin
+/usr/local/share/libfprint/validity/06cb_00b7/db_write_enable.bin
 /usr/local/share/libfprint/validity/partition_sig_standard.bin
 /usr/local/share/libfprint/validity/partition_sig_0090.bin
 /usr/local/share/libfprint/validity/ca_pubkey.bin
@@ -518,6 +516,8 @@ These are symlinks to files under the experimental workspace.
 
 The experimental MR !626 libfprint driver has **not** been installed over the system libfprint.
 
+No `ninja install` has been performed.
+
 No PAM configuration has been changed.
 
 No permanent udev rule has been added.
@@ -526,27 +526,18 @@ Build-tree runtime testing still uses temporary elevation for USB access.
 
 ---
 
-## 16. Immediate next milestone
+## 17. Immediate next milestone
 
-The immediate task is to inspect what happens directly after the first successful enrollment capture.
+The next gate is build-tree verification:
 
-The next diagnostic target is the tail of:
+1. confirm the local `test-storage.variant` file exists;
+2. verify the enrolled right index finger produces a match;
+3. deliberately test a different finger and confirm it is rejected.
 
-```text
-~/fingerprint-path1/enroll-runtime-3.txt
-```
-
-The goal is to determine whether the driver:
-
-- interprets a post-capture sensor status incorrectly,
-- terminates enrollment after the first sample,
-- fails to transition back to "finger needed" for scan 2,
-- or encounters another silent state-machine condition.
-
-Only after full multi-scan enrollment is proven should verification and then fprintd/PAM integration proceed.
+Only after both sides of verification are proven should normal-user USB access, fprintd integration, and finally PAM/login/sudo integration begin.
 
 ---
 
-## 17. Current project state in one sentence
+## 18. Current project state in one sentence
 
-> **Native Linux operation of the HP EliteBook 840 G6 `06cb:00b7` fingerprint reader has crossed a major functional threshold: libfprint MR !626 now opens and identifies the reader as a 57K0/`0xd51` sensor, completes TLS and calibration, detects a real finger, and captures the first enrollment sample successfully; the remaining blocker is completing the full 8-scan enrollment sequence before verification and daily-use integration can begin.**
+> **Native Linux operation of the HP EliteBook 840 G6 `06cb:00b7` fingerprint reader has now crossed the full enrollment threshold: libfprint MR !626 opens and identifies the 57K0/`0xd51` sensor, completes TLS and calibration, captures repeated real scans, and successfully completes right-index enrollment after adding the required `db_write_enable.bin`; verification is the next milestone before daily-use system integration.**
