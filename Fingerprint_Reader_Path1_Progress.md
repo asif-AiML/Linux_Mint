@@ -5,7 +5,7 @@
 **Sensor:** Synaptics `06cb:00b7` — Fingerprint reader [HP G6]  
 **OS:** Linux Mint 22.3 (Zena), Ubuntu Noble base  
 **Kernel during testing:** `7.0.0-30-generic`  
-**Status:** Native driver successfully built and sensor detected; runtime is currently blocked by missing device-specific Validity data for `06cb:00b7`.
+**Status:** Native MR !626 driver builds and recognizes the sensor. USB access works with temporary elevation. Current runtime blocker is still the missing `06cb_00b7/init.bin`, but the Windows driver and the source of `libfprint-validity-data` have now been inspected and the problem is much more narrowly defined.
 
 ---
 
@@ -13,20 +13,18 @@
 
 The fingerprint reader in the HP EliteBook 840 G6 works correctly under Windows, but Linux Mint did not expose it through the normal fingerprint stack.
 
-The system already had the standard fingerprint packages installed:
+The system already had:
 
 - `fprintd`
 - `libfprint-2-2`
 - `libfprint-2-tod1`
 - `libpam-fprintd`
 
-Despite that, the normal user-facing test returned:
+The normal test returned:
 
 ```text
 No devices available
 ```
-
-This established the first important fact: the hardware itself was present and functional, but the stable libfprint stack shipped with Linux Mint/Ubuntu Noble did not provide a working driver for this exact sensor.
 
 The USB device was confirmed as:
 
@@ -34,62 +32,42 @@ The USB device was confirmed as:
 06cb:00b7 Synaptics, Inc. Fingerprint reader [HP G6]
 ```
 
-The device is vendor-specific USB hardware with bulk and interrupt endpoints. There was no sign that the device was physically absent or disabled.
+The reader is vendor-specific USB hardware with bulk and interrupt endpoints. There was no evidence of missing or disabled hardware.
 
 ---
 
 ## 2. Two-path strategy
 
-To avoid turning a practical setup attempt into an endless reverse-engineering project, the work was deliberately divided into two possible paths.
-
 ### Path 1 — practical native attempt
 
-The goal of Path 1 is to make the existing hardware work using a native Linux/libfprint implementation without developing a new fingerprint driver from scratch.
+Goal: make the existing reader work using an existing native Linux/libfprint implementation without developing a new fingerprint driver from scratch.
 
 Success criteria:
 
 1. Linux enumerates the sensor through a real libfprint driver.
-2. The sensor can be opened successfully.
-3. A fingerprint can be enrolled.
-4. The enrolled fingerprint can be verified.
+2. The sensor opens successfully.
+3. Fingerprint enrollment succeeds.
+4. Fingerprint verification succeeds.
 
-Path 1 may include:
+Path 1 may include building an existing development branch, normal build dependencies, using legitimate firmware/device-data files, and inspecting the matching Windows package.
 
-- building an existing libfprint development branch,
-- installing normal development dependencies,
-- using firmware or device-data files that already exist for the hardware,
-- inspecting the matching Windows driver package for firmware/configuration artifacts.
-
-Path 1 should stop if success requires substantial protocol reverse engineering, USB tracing, or implementation of new driver logic.
+Path 1 should stop if success requires substantial USB tracing, protocol reverse engineering, or implementation of new hardware logic.
 
 ### Path 2 — future open-source driver work
 
-If Path 1 cannot succeed without real driver development, the work should be reclassified as Path 2.
-
-That would be a separate development project involving tasks such as protocol investigation, USB transaction analysis, source modifications, quirks, tests, and potentially upstream contribution.
+If Path 1 reaches that boundary, the work should become a separate driver-development project involving protocol analysis, USB capture, quirks, source changes, tests, and potentially upstream contribution.
 
 Path 2 has **not** started.
 
 ---
 
-## 3. Early route considered and rejected: python-validity
+## 3. python-validity route considered and rejected
 
-An older Linux route for some Validity/Synaptics sensors is `python-validity`.
+An older route for some Validity/Synaptics sensors is `python-validity`.
 
-Research showed historical reports involving the HP EliteBook 840 G6 and the same `06cb:00b7` device where the older python-validity stack did not match/support the sensor correctly.
+Historical reports involving the HP EliteBook 840 G6 and `06cb:00b7` indicated that the older python-validity stack did not match/support this sensor correctly, so it was not selected as the main solution.
 
-Because of that, the project did **not** proceed by trying to revive the older python-validity daemon as the main solution.
-
-This distinction became important later because the newer driver also uses the word **Validity**, but it is a completely different architecture:
-
-```text
-Old route:
-python-validity daemon
-        ↓
-      fprintd
-```
-
-The route currently being tested is:
+The current route is different:
 
 ```text
 libfprint MR !626 native Validity driver
@@ -99,279 +77,168 @@ libfprint MR !626 native Validity driver
 Linux enrollment / verification
 ```
 
-The current work is therefore **not python-validity**.
+The current work is therefore **not python-validity**, although later investigation shows that MR !626's external data package was generated from selected python-validity data definitions.
 
 ---
 
 ## 4. Discovery of libfprint MR !626
 
-The key breakthrough was finding an in-development libfprint merge request, **MR !626**, containing a native Validity/Synaptics driver.
-
-The merge-request source explicitly contains support entries for the exact sensor:
+The key breakthrough was finding libfprint merge request **!626**, which contains a native Validity/Synaptics driver and explicit support references for:
 
 ```text
 06cb:00b7
 ```
 
-Important source references discovered inside the branch include:
+Relevant files include:
 
 - `libfprint/drivers/validity/validity.h`
 - `libfprint/drivers/validity/validity_fwext.c`
 - `libfprint/drivers/validity/validity_hal.c`
 - `libfprint/drivers/validity/validity_sensor.c`
 
-The source contains comments specifically naming the HP EliteBook 840 G6 and `06cb:00b7`.
+Important source evidence includes:
 
-Examples of what was found:
-
-- a device identifier for `VALIDITY_DEV_B7`,
+- `VALIDITY_DEV_B7` for `06cb:00b7`,
 - a HAL entry using PID `0x00b7`,
-- a sensor-family mapping for the HP G6 series,
-- firmware-extension handling specifically including `06cb:00b7`.
+- HP EliteBook 840 G6 comments,
+- a sensor-family entry describing the HP G6 series as a `57K0` family device,
+- sensor ID `0x0d51`,
+- firmware-extension handling explicitly including `06cb:00b7`.
 
-This was much stronger evidence than the stable libfprint tree, where `00b7` appeared only in a generic USB hardware list and was not registered to a usable fingerprint driver.
-
-At this point, MR !626 became the main Path 1 candidate.
+This was stronger than the stable libfprint tree, where `00b7` appeared only in generic hardware metadata rather than a usable driver registration.
 
 ---
 
-## 5. Isolated build workspace
+## 5. Isolated workspace
 
-To keep the experiment easy to understand and mostly removable, the working area was created under:
+Main workspace:
 
 ```text
 ~/fingerprint-path1
 ```
 
-The libfprint source was placed under:
+Important subdirectories:
 
 ```text
 ~/fingerprint-path1/libfprint
+~/fingerprint-path1/tools-venv
+~/fingerprint-path1/validity-data
+~/fingerprint-path1/windows-driver
 ```
 
-MR !626 was fetched into a local branch named:
+MR !626 was fetched into local branch:
 
 ```text
 mr-626
 ```
 
-A Python virtual environment was also created for the build tools:
+Meson and Ninja were initially kept inside `tools-venv`.
 
-```text
-~/fingerprint-path1/tools-venv
-```
-
-Meson and Ninja were installed inside that environment instead of immediately installing them globally.
-
-This allowed the actual driver source and build tooling to remain largely contained inside the project workspace.
+The general rule remains: keep experimental artifacts under `~/fingerprint-path1` wherever practical and avoid installing the experimental driver system-wide until build-tree enrollment and verification are proven.
 
 ---
 
-## 6. Build dependency phase — what failed and why
+## 6. Build dependency history
 
-The first significant obstacle was not the fingerprint code. It was the development environment.
+The early failures were build-environment failures, not driver failures.
 
-The machine had runtime libraries installed, but several corresponding development headers and pkg-config files were missing.
+### GUsb / libusb / json-glib
 
-### 6.1 GUsb / libusb / json-glib
-
-The first Meson configuration failed because the `gusb` development dependency could not be found.
-
-Initially, development `.deb` packages were downloaded and extracted locally inside the project directory to avoid modifying the system.
-
-That proved that the required metadata and headers were available, but it introduced an important problem: the extracted `.pc` pkg-config files still contained paths such as:
-
-```text
-/usr/include/gusb-1
-/usr/include/libusb-1.0
-/usr/include/json-glib-1.0
-```
-
-while the real extracted headers were under `~/fingerprint-path1/...`.
-
-As a result, Ninja failed with errors like:
+Locally extracted development packages produced fragile pkg-config paths pointing at `/usr/include/...` while headers were elsewhere under the project tree. This caused missing-header failures such as:
 
 ```text
 fatal error: gusb.h: No such file or directory
 ```
 
-This was a build-environment problem, not a fingerprint-driver problem.
-
-After trying to preserve complete local isolation, a small and controlled exception was made: normal system development packages were allowed where they simplified the build substantially.
-
-The following development packages were installed through APT:
+A controlled exception to local-only dependencies was made and these APT development packages were installed:
 
 - `libgusb-dev`
 - `libusb-1.0-0-dev`
 - `libjson-glib-dev`
 
-Their headers were verified under `/usr/include`.
+### OpenSSL
 
-That removed the GUsb/libusb/json-glib blocker.
-
-### 6.2 OpenSSL
-
-Once the generic USB dependencies were fixed, compilation reached the actual Validity driver sources and failed on:
+Compilation then reached the Validity sources and failed on:
 
 ```text
 openssl/evp.h: No such file or directory
 ```
 
-This was progress: the compiler was now entering files such as the Validity protocol, TLS, firmware-extension, and pairing implementation.
+`libssl-dev` resolved this.
 
-`libssl-dev` was installed through APT and `/usr/include/openssl/evp.h` was verified.
+### GObject Introspection
 
-After a clean Meson reconfiguration, the OpenSSL failure disappeared.
-
-### 6.3 GObject Introspection
-
-The next failure happened much later in the build, after the Validity code had compiled.
-
-A locally extracted GObject Introspection wrapper attempted to execute:
+A later build failure occurred while generating `FPrint-2.0.gir` because a locally extracted wrapper expected:
 
 ```text
 /usr/bin/g-ir-scanner
 ```
 
-but the system executable was not present.
-
-The build therefore failed while generating:
-
-```text
-FPrint-2.0.gir
-```
-
-This was again tooling, not driver logic.
-
-The system `gobject-introspection` package was installed, and the required components were verified:
-
-```text
-/usr/bin/g-ir-scanner
-/usr/libexec/gobject-introspection-bin/deb-elf-get-needed
-```
-
-A final clean Meson setup was then performed without the earlier custom pkg-config path workarounds.
+Installing `gobject-introspection` provided the required executable and helper.
 
 ---
 
-## 7. Major success: MR !626 builds completely
+## 7. Major build success
 
-After resolving the development dependencies, Ninja completed the full build:
+After a clean Meson setup and the required development packages, Ninja completed:
 
 ```text
 [120/120]
 ```
 
-This is an important milestone.
+The build successfully compiled and linked the native Validity implementation, including protocol, sensor, HAL, firmware-extension, TLS, pairing, enrollment, verification, capture, and database code.
 
-The build successfully compiled the native Validity implementation, including components for:
-
-- protocol communication,
-- sensor handling,
-- HAL/device mapping,
-- firmware extension support,
-- TLS,
-- pairing,
-- enrollment,
-- verification,
-- capture,
-- database handling.
-
-The resulting libfprint shared library was linked successfully as well.
-
-This means the native MR !626 driver is buildable on the current Linux Mint 22.3 / Noble environment once the required development packages are available.
-
-No custom driver code had to be written to achieve this build.
+The experimental driver itself has **not** been installed over the system libfprint.
 
 ---
 
-## 8. First runtime test — the driver sees `06cb:00b7`
+## 8. First build-tree runtime test
 
-The build-tree enrollment example was launched directly against the newly built library rather than installing it system-wide.
+The build-tree enrollment example was run directly against the newly built libfprint.
 
-The program reached the normal finger-selection menu, which confirmed the example itself was running correctly.
-
-The right index finger was selected for testing.
-
-The first runtime attempt then produced a USB permission error:
+It reached the normal finger-selection menu. The first hardware failure was USB permissions:
 
 ```text
-USB error on device 06cb:00b7 : Access denied (insufficient permissions)
+USB error on device 06cb:00b7 : Access denied
 ```
 
-This failure was actually useful because the debug log showed:
+The debug output identified:
 
 ```text
 libfprint-validity-DEBUG
 ```
 
-for the `06cb:00b7` sensor.
+for `06cb:00b7`.
 
-That proved something the stable system stack could not do:
+This proved that MR !626 recognized the physical device and selected the native Validity driver.
 
-> **MR !626 recognized the physical `06cb:00b7` reader and selected the native Validity driver for it.**
-
-The earlier stable system test had simply returned `No devices available`.
-
-The test was repeated once with elevated privileges only for the process, avoiding permanent udev changes at this stage.
-
-This removed the USB permission blocker.
+A one-off elevated test was then used instead of creating a permanent udev rule. That removed the USB access blocker.
 
 ---
 
-## 9. Second runtime test — driver opens far enough to request device data
+## 9. Current runtime blocker: missing device data
 
-With USB access available, the driver progressed further into its device-open state machine.
-
-The next failure was:
+With USB access available, the driver progressed further into its open state machine and failed with:
 
 ```text
 Device data files not found for 06cb:00b7.
 Install the libfprint-validity-data package.
 ```
 
-The driver searched locations including:
+The driver searches locations including:
 
 ```text
 /usr/share/libfprint/validity/
 /usr/local/share/libfprint/validity/
 ```
 
-This is the current Path 1 blocker.
-
-It is important to distinguish this from earlier failures:
-
-- the sensor is physically visible,
-- the new driver is selected,
-- USB permission can be satisfied,
-- the native driver has built successfully,
-- failure now occurs because a device-specific data package for `06cb:00b7` is missing.
-
-This is therefore **not** a generic "driver not found" state anymore.
-
----
-
-## 10. Investigation of the required Validity data
-
-The MR !626 source was inspected to understand exactly what the driver expects.
-
-### 10.1 Device-specific directory layout
-
-For the current hardware, the per-device directory name is constructed from VID and PID:
+The per-device directory for this sensor is:
 
 ```text
-06cb_00b7
+06cb_00b7/
 ```
 
-The expected location therefore becomes something like:
-
-```text
-/usr/share/libfprint/validity/06cb_00b7/
-```
-
-### 10.2 Per-device blob names
-
-The driver knows these per-device filenames:
+Known per-device filenames are:
 
 ```text
 init.bin
@@ -380,13 +247,9 @@ reset.bin
 db_write_enable.bin
 ```
 
-Of these, `init.bin` is mandatory.
+`init.bin` is mandatory; the other per-device blobs are optional in the driver's loading logic.
 
-The others are treated as optional if absent.
-
-### 10.3 Common Validity data
-
-The data package also supports common files such as:
+Common package data includes files such as:
 
 ```text
 partition_sig_standard.bin
@@ -398,25 +261,15 @@ fw_pubkey_x.bin
 fw_pubkey_y.bin
 ```
 
-### 10.4 Integrity protection
-
-These files are not arbitrary binary blobs.
-
-`validity_data.c` verifies the packaged device data with an HMAC before using it. A corrupt or incompatible file is rejected.
-
-This means copying an `init.bin` from a random neighboring sensor is not a sound solution even if the filename matches.
+The `.bin` data is protected by an HMAC-SHA256 integrity trailer. This is an integrity mechanism, not a secret authentication mechanism, but it means the driver expects packaged data in a specific format.
 
 ---
 
-## 11. `libfprint-validity-data` package investigation
+## 10. Published `libfprint-validity-data` package
 
-The natural next attempt was to obtain the dedicated `libfprint-validity-data` package used with the new Validity work.
+The package was found in the `m-jedrasik/libfprint-validity` PPA, but the PPA does not support Noble, so it was **not** added forcibly to the system.
 
-A PPA was discovered that publishes the package, but attempting to add it normally on Linux Mint 22.3 / Noble failed because the PPA does not support Noble.
-
-Rather than force a foreign repository onto the system, its package index was queried directly.
-
-The exact package found was:
+The Resolute package was downloaded and extracted locally instead:
 
 ```text
 libfprint-validity-data
@@ -424,13 +277,7 @@ Version: 0.1.0-1ppa2~resolute1
 Architecture: all
 ```
 
-The `.deb` was downloaded manually into the project workspace and extracted locally without installing it.
-
-This kept the experiment controlled and avoided replacing the system libfprint stack.
-
-### Result
-
-The package contained per-device data for:
+It contains per-device data for:
 
 ```text
 06cb_009a
@@ -439,164 +286,273 @@ The package contained per-device data for:
 138a_009d
 ```
 
-It also contained the common Validity data files.
-
-However, it **did not contain:**
+but **not**:
 
 ```text
-06cb_00b7/
+06cb_00b7
 ```
 
-Therefore the currently published data package does not provide the required `init.bin` for the HP EliteBook 840 G6 reader.
-
-This was another useful negative result: the problem is no longer "find the package"; the package itself simply does not ship the exact device payload we need.
+Therefore simply installing the available package would not solve the HP G6 reader's missing `init.bin`.
 
 ---
 
-## 12. Firmware-extension mapping for the HP device
+## 11. Matching Windows driver package investigation
 
-MR !626 contains explicit firmware-extension logic for the HP variant.
-
-For:
+The exact Windows package for the same hardware was obtained from the Microsoft Update Catalog and extracted locally under:
 
 ```text
-06cb:00b7
+~/fingerprint-path1/windows-driver/extracted
 ```
 
-the driver maps the firmware-extension filename to:
+The package contains:
 
 ```text
 6_07f_hp_cmit_mis_qm.xpfwext
+IPTSecureFPUiWin32.dll
+IPTSecureFPUix64.dll
+IPTSecureFPWin32.dll
+IPTSecureFPx64.dll
+synaAdvAdapter.dll
+SynaEFIResDll.dll
+Synaptics Fingerprint Manager.lnk
+SynapticsFingerprintManager.exe
+SynapticsFingerprintManager.exe.config
+synaumdf.cat
+synaWudfBioUsb.dll
+synaWudfBioUsbHPProd.inf
 ```
 
-The source comments identify this as an HP variant and specifically reference `06cb:00b7` / HP EliteBook 840 G6.
+### 11.1 Exact hardware match confirmed
 
-The firmware search paths include locations such as:
-
-```text
-/usr/share/libfprint/validity
-/var/lib/python-validity
-/var/run/python-validity
-/usr/share/python-validity
-```
-
-This firmware extension is related to the sensor's firmware path, while the immediate runtime failure currently concerns the separate per-device data store (`init.bin`, etc.).
-
-Both may become relevant during the next phase.
-
----
-
-## 13. What has been proven so far
-
-The work has already answered several important questions.
-
-### Proven successful
-
-- The HP EliteBook 840 G6 fingerprint reader is physically present as `06cb:00b7`.
-- Stable Linux Mint/libfprint does not provide a usable driver for it.
-- libfprint MR !626 contains explicit source support for this device.
-- MR !626 can be configured and built successfully on Linux Mint 22.3 / Noble.
-- The full Ninja build completes successfully (`120/120`).
-- The resulting build-tree library can be loaded without installing it system-wide.
-- MR !626 recognizes `06cb:00b7` and selects the native Validity driver.
-- The sensor can be reached once USB permissions are provided.
-- Runtime proceeds far enough into device open/initialization to request Validity device data.
-
-### Not yet proven
-
-- Successful device initialization beyond the missing data stage.
-- Successful firmware-extension handling if it is required on this particular sensor state.
-- Successful fingerprint capture.
-- Successful enrollment.
-- Successful verification.
-- Reliable integration with `fprintd`.
-- Login/sudo/PAM authentication.
-
-PAM integration is intentionally postponed until enrollment and verification work reliably in the build-tree tests.
-
----
-
-## 14. Current blocker
-
-The current failure is specific and reproducible:
-
-```text
-Device data files not found for 06cb:00b7
-```
-
-The driver expects a device directory:
-
-```text
-06cb_00b7/
-```
-
-with at minimum:
-
-```text
-init.bin
-```
-
-The available `libfprint-validity-data` package does not contain this device directory.
-
-No evidence has been found inside MR !626 of a tool that automatically generates the missing `06cb_00b7/init.bin` payload from scratch.
-
-Because the data is integrity-checked and device-specific, borrowing another sensor's blob by guesswork is deliberately avoided.
-
----
-
-## 15. Next phase — inspect the matching Windows driver package
-
-Before escalating this work into Path 2 driver development, Path 1 has one strong remaining lead: the official Windows driver package for this exact reader.
-
-The Windows hardware works correctly on the same laptop, so the matching Synaptics package may contain firmware, initialization data, OEM configuration, or other artifacts that can explain what Linux is missing.
-
-The relevant Windows hardware identity is:
+The INF explicitly binds the package to:
 
 ```text
 USB\VID_06CB&PID_00B7
 ```
 
-The matching Windows driver family has been identified as a Synaptics VFS7552/PurePrint fingerprint sensor package.
+The install sections also include the firmware copy group.
 
-The next investigation should be performed under:
+### 11.2 Exact firmware-extension confirmed
+
+The INF contains:
 
 ```text
-~/fingerprint-path1/windows-driver/
+[FWextCopy]
+6_07f_hp_cmit_mis_qm.xpfwext
 ```
 
-### Planned Windows-driver investigation
+and lists the same file under the source files.
 
-1. Obtain the exact Windows driver package that supports `USB\VID_06CB&PID_00B7`.
-2. Extract the package locally; do not install Windows components on Linux.
-3. Inspect INF files to confirm the exact hardware mapping.
-4. Search the extracted package for the expected HP firmware-extension name:
+This confirms that the firmware-extension file hard-coded by MR !626 for `06cb:00b7` is not a guessed neighboring artifact: it is the exact firmware-extension shipped by the matching Synaptics Windows driver package.
 
-   ```text
-   6_07f_hp_cmit_mis_qm.xpfwext
-   ```
+The file is copied verbatim; no INF rename or alternate companion firmware file was found.
 
-5. Search for binary/configuration data that may correspond to the required Linux-side `init.bin` and related initialization blobs.
-6. Compare any discovered files with MR !626's parsing, expected sizes, and initialization flow.
-7. Keep all experiments inside `~/fingerprint-path1` wherever practical.
-8. Retry the build-tree enrollment test only after the missing data is understood and supplied correctly.
+### 11.3 Windows DLL string inspection
 
-### Path 1 stop condition
+Simple string inspection of the main Windows binaries found firmware-related symbols including:
 
-If obtaining the required data turns into any of the following:
+```text
+CBiometricDevice::OnGetFirmwareVersion
+CBiometricDevice::OnUpdateFirmware
+CBiometricDevice::UpdateFirmwareExtension
+FirmwareVersion =
+GetSystemFirmwareTable
+.xpfwext
+```
 
-- reverse-engineering unknown USB transactions,
-- capturing Windows USB traffic,
-- creating a new initialization protocol,
-- substantial changes to the MR !626 driver,
-- implementing missing hardware behavior,
+No obvious string references to Linux-side names such as:
 
-then Path 1 should stop.
+```text
+init.bin
+reset.bin
+db_write_enable.bin
+```
 
-That work belongs to **Path 2**, where the goal would explicitly become open-source driver development rather than practical installation.
+were found.
+
+This suggests the Linux data blobs are not merely Windows files with different names.
 
 ---
 
-## 16. System changes made during the experiment
+## 12. Source of `libfprint-validity-data` discovered
+
+The PPA source package identifies the upstream data repository as:
+
+```text
+https://gitlab.freedesktop.org/ggiesen/libfprint-validity-data
+```
+
+The source tarball was downloaded and inspected locally.
+
+Important files include:
+
+```text
+generate_data.py
+src/blobs_90.py
+src/blobs_97.py
+src/blobs_9a.py
+src/blobs_9d.py
+src/init_flash.py
+src/tls.py
+```
+
+This was an important breakthrough because it explains exactly how the published `.bin` files are made.
+
+---
+
+## 13. How `generate_data.py` works
+
+`generate_data.py` explicitly says it generates libfprint Validity data files from python-validity source extracts.
+
+Its PID mapping is:
+
+```text
+90 -> 138a:0090
+97 -> 138a:0097
+9a -> 06cb:009a
+9d -> 138a:009d
+```
+
+There is no `b7` entry.
+
+The variable-to-output mapping is:
+
+```text
+init_hardcoded             -> init.bin
+init_hardcoded_clean_slate -> init_clean_slate.bin
+reset_blob                 -> reset.bin
+db_write_enable            -> db_write_enable.bin
+```
+
+For each known device, the generator:
+
+1. reads pre-existing hex payloads from `src/blobs_XX.py`,
+2. decodes the hex into raw bytes,
+3. appends an HMAC-SHA256 integrity trailer,
+4. writes the corresponding `.bin` file.
+
+The HMAC key is intentionally compiled into both the generator and driver; its role is corruption/tampering detection rather than secrecy.
+
+Common partition signatures, TLS material, CA data, and firmware public-key coordinates are generated separately from `init_flash.py`, `tls.py`, and driver constants.
+
+### Important conclusion
+
+The generator **does not derive a device initialization sequence from VID/PID** and it does not extract `init.bin` from the Windows driver.
+
+It only packages already-known protocol payloads.
+
+Therefore adding `00b7` to the `PIDS` table alone would accomplish nothing unless a corresponding real `blobs_b7.py` payload definition existed.
+
+---
+
+## 14. Inspection of `src/blobs_9a.py`
+
+The closest same-vendor example, `06cb:009a`, was inspected.
+
+It defines four large opaque hex payloads:
+
+```text
+init_hardcoded
+init_hardcoded_clean_slate
+reset_blob
+db_write_enable
+```
+
+These payloads are not small configuration structures. They are substantial pre-recorded binary command/data sequences beginning with protocol-looking data such as `060200...` and extending for hundreds or thousands of bytes.
+
+This materially changes the interpretation of the missing `00b7` data:
+
+> The missing `06cb_00b7/init.bin` is not something that can be responsibly synthesized by changing the PID, copying a short table entry, or trivially editing the `009a` payload.
+
+`blobs_9a.py` gives us a reference format and confirms the packaging model, but it does **not** provide evidence that its payload is compatible with `00b7`.
+
+Because MR !626 identifies the HP G6 `00b7` reader as a `57K0` / sensor-ID `0x0d51` family device, the next useful question is whether a legitimate 57K0 initialization payload exists elsewhere in python-validity history, another package revision, related hardware support, or upstream development artifacts.
+
+Blindly reusing `06cb:009a` remains intentionally out of scope for Path 1 because it could send the wrong device-specific protocol sequence to the reader.
+
+---
+
+## 15. What is now proven
+
+### Proven successful
+
+- The reader is physically present as `06cb:00b7`.
+- Stable Linux Mint/libfprint does not expose it through a usable fingerprint driver.
+- MR !626 contains explicit `00b7` support logic.
+- MR !626 builds completely on this Mint/Noble system (`120/120`).
+- The build-tree library recognizes the physical reader and selects `libfprint-validity`.
+- USB access works when temporary elevated permissions are supplied.
+- Driver initialization proceeds until external Validity device data is requested.
+- The available `libfprint-validity-data` package lacks `06cb_00b7`.
+- The matching Windows package is confirmed by INF hardware ID `USB\VID_06CB&PID_00B7`.
+- The matching Windows package contains the exact MR !626 firmware extension `6_07f_hp_cmit_mis_qm.xpfwext`.
+- The data-package source and generator have been found.
+- The generator packages pre-existing hard-coded device protocol payloads rather than deriving them automatically.
+- `06cb:009a` has explicit large payload definitions, but there is no equivalent `b7` definition in the current source package.
+
+### Not yet proven
+
+- Existence/location of a legitimate `00b7` / 57K0 initialization payload.
+- Successful device initialization past `init.bin` loading.
+- Whether the confirmed `.xpfwext` will be needed in the reader's current firmware state.
+- Fingerprint capture.
+- Enrollment.
+- Verification.
+- fprintd integration.
+- PAM/login/sudo authentication.
+
+---
+
+## 16. Current blocker, now more precisely defined
+
+The blocker is no longer simply:
+
+```text
+"Find libfprint-validity-data"
+```
+
+and it is not merely:
+
+```text
+"Find the Windows firmware"
+```
+
+The Windows firmware extension has now been found and independently confirmed against the exact hardware package.
+
+The real remaining data blocker is:
+
+> **Locate a legitimate device initialization payload equivalent to python-validity's `init_hardcoded` for the `06cb:00b7` / HP G6 / 57K0 family, then package it in the format expected by MR !626 as `06cb_00b7/init.bin`.**
+
+The existing generator already explains how to add the HMAC and output-file structure once the correct underlying payload is known.
+
+---
+
+## 17. Path 1 next investigation
+
+The next investigation should remain non-invasive and source-oriented.
+
+Good Path 1 leads include:
+
+1. Search python-validity history/branches/issues for `00b7`, `57K0`, `0xd51`, HP G6, or the exact firmware name.
+2. Search older/newer `libfprint-validity-data` revisions for a `blobs_b7.py` or 57K0 payload.
+3. Inspect MR !626 discussion/commits for the hardware-validation source behind its `00b7` comments.
+4. Compare related 57K0-family devices only to identify provenance or shared known data — **not** to blindly transmit another device's init payload.
+5. Keep the confirmed Windows `.xpfwext` available for later build-tree testing once the mandatory init-data stage is solved.
+
+### Path 1 stop condition
+
+If obtaining the correct payload requires:
+
+- capturing Windows USB traffic,
+- reverse-engineering proprietary command sequences from DLL machine code,
+- experimentally modifying/transmitting unknown initialization blobs,
+- implementing missing protocol behavior in MR !626,
+
+then Path 1 should stop and the work should be explicitly reclassified as **Path 2**.
+
+---
+
+## 18. System changes made
 
 Most work remains under:
 
@@ -604,7 +560,7 @@ Most work remains under:
 ~/fingerprint-path1
 ```
 
-However, several normal development packages were installed through APT after local-only dependency extraction became unnecessarily fragile:
+System development packages installed through APT:
 
 - `libgusb-dev`
 - `libusb-1.0-0-dev`
@@ -612,16 +568,18 @@ However, several normal development packages were installed through APT after lo
 - `libssl-dev`
 - `gobject-introspection`
 
-These are build/development dependencies. The experimental MR !626 libfprint driver itself has **not** been installed over the system library.
+The experimental MR !626 libfprint driver has **not** been installed over the system library.
 
-No PAM configuration has been changed for this experiment.
+No PAM configuration has been changed.
 
-No permanent udev rule has been added at this stage.
+No permanent udev rule has been added.
 
-The runtime USB-access test used temporary elevated privileges rather than immediately changing system permissions.
+USB access testing used temporary process elevation.
+
+The Windows driver was only downloaded and extracted as evidence/data; no Windows components were installed on Linux.
 
 ---
 
-## 17. Current project state in one sentence
+## 19. Current project state in one sentence
 
-> **The native libfprint MR !626 driver now builds completely and successfully recognizes the HP EliteBook 840 G6 `06cb:00b7` fingerprint reader; the remaining Path 1 blocker is the absence of the device-specific Validity initialization data, so the next step is to inspect the exact Windows Synaptics driver package for firmware/configuration artifacts before considering any real driver-development work.**
+> **The native libfprint MR !626 driver builds completely and recognizes the HP EliteBook 840 G6 `06cb:00b7` reader; the exact Windows firmware extension has now been confirmed and obtained, and the `libfprint-validity-data` generator has been traced to pre-existing python-validity protocol blobs, leaving one sharply defined Path 1 blocker: locating the legitimate `00b7`/57K0 `init_hardcoded` payload needed to create `06cb_00b7/init.bin` before enrollment can proceed.**
