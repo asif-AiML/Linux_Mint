@@ -6,7 +6,7 @@
 **OS:** Linux Mint 22.3 (Zena), Ubuntu Noble base  
 **Kernel during testing:** `7.0.0-30-generic`  
 **Current target:** native libfprint MR !626 Validity driver  
-**Current state:** **Build-tree native enrollment succeeded.** MR !626 recognizes, opens, calibrates, captures from, and enrolls the physical `06cb:00b7` reader successfully when supplied with the required Validity data. Verification and normal fprintd/PAM integration remain the next milestones.
+**Current state:** MR !626 now recognizes, opens, identifies, calibrates, and captures from the physical `06cb:00b7` reader successfully when supplied with the required Validity data. The first real enrollment capture (`stage 0`) succeeds, but a full 8-scan enrollment has **not yet been proven**. Verification and fprintd/PAM integration therefore remain blocked until the enrollment state-machine behavior is understood.
 
 ---
 
@@ -19,10 +19,11 @@ The objective is to make the reader work natively through libfprint/fprintd and 
 Success milestones:
 
 1. libfprint recognizes and opens the sensor. **DONE**
-2. Enrollment succeeds. **DONE in build-tree test**
-3. Verification distinguishes the correct finger from an incorrect finger. **NEXT**
-4. fprintd integration works reliably.
-5. PAM/login/sudo integration works reliably.
+2. Finger detection and real fingerprint capture work. **DONE**
+3. Full multi-scan enrollment succeeds. **CURRENT BLOCKER**
+4. Verification distinguishes the correct finger from an incorrect finger.
+5. fprintd integration works reliably.
+6. PAM/login/sudo integration works reliably.
 
 ---
 
@@ -112,13 +113,11 @@ APT development packages added during build troubleshooting:
 - `libssl-dev`
 - `gobject-introspection`
 
-After the dependency issues were resolved, the MR !626 build completed fully:
+After dependency issues were resolved, MR !626 built completely:
 
 ```text
 [120/120]
 ```
-
-This proved the native Validity implementation can be built successfully on the Mint/Noble system.
 
 ---
 
@@ -223,15 +222,13 @@ The runtime solution did **not** switch back to python-validity.
 
 Recent `python-validity` PR #256 became useful because it specifically covers sensor type `0xd51` and the exact USB ID `06cb:00b7`. It provided evidence that established normal initialization data can be reused for this family and that earlier failures were caused by deeper capture/protocol behavior rather than necessarily requiring a unique B7 initialization blob.
 
-The same upstream work includes real-world successful enrollment/authentication reports for `06cb:00b7 + 0xd51` hardware.
-
 That evidence justified a controlled native-libfprint experiment using only the normal initialization payload while deliberately avoiding reset/clean-slate payloads.
 
 ---
 
 ## 10. Device identity confirmed
 
-A debug build-tree run initially showed the firmware tuple:
+A debug build-tree run showed the firmware tuple:
 
 ```text
 Version: 6.7
@@ -240,7 +237,7 @@ Build Num: 164
 Build Time: 1415491824
 ```
 
-The successful run later identified the hardware directly:
+The later successful open path identified the hardware directly:
 
 ```text
 Device: 57K0 FM-3439-001 (type=0x0d51)
@@ -326,9 +323,9 @@ No experimental libfprint installation was performed.
 
 ---
 
-## 13. Major milestone: native build-tree enrollment SUCCESS
+## 13. Major milestone: native device open + real capture SUCCESS
 
-After the verified `06cb_00b7/init.bin` and common Validity files were available, the third build-tree enrollment run progressed through the entire native driver initialization path.
+After the verified `06cb_00b7/init.bin` and common Validity files were available, the third build-tree enrollment run progressed through the full native driver initialization path.
 
 ### External data loaded successfully
 
@@ -377,14 +374,12 @@ TLS session established (secure_rx=1 secure_tx=1)
 
 ### Exact physical sensor identification succeeded
 
-The native driver then identified the sensor as:
+The native driver identified the sensor as:
 
 ```text
 Device: 57K0 FM-3439-001 (type=0x0d51)
 Sensor type: 0x0d51, 120 bytes/line, 2x repeat
 ```
-
-This is direct runtime confirmation of the hardware family.
 
 ### Calibration succeeded
 
@@ -396,11 +391,11 @@ OPEN_NUM_STATES completed successfully
 Validity sensor opened successfully
 ```
 
-This is the first time the reader successfully completed the full native open state machine under Linux in this investigation.
+This proves the reader can complete the full native open state machine under Linux.
 
 ### Enrollment became genuinely interactive
 
-The program then printed:
+The program printed:
 
 ```text
 Opened device.
@@ -409,15 +404,15 @@ You will need to successfully scan your right index finger 8 times to complete t
 Scan your finger now.
 ```
 
-The process appeared to have paused, but this was correct behavior: it was waiting for a physical finger rather than hanging.
+The pause at this point was correct behavior: the process was waiting for a physical finger.
 
-When the right index finger was placed on the sensor, the driver immediately reported:
+When the right index finger was placed on the sensor, the driver reported:
 
 ```text
 Finger detected on sensor
 ```
 
-and changed libfprint's finger state from:
+and libfprint's finger state changed from:
 
 ```text
 FP_FINGER_STATUS_NEEDED
@@ -429,34 +424,29 @@ to:
 FP_FINGER_STATUS_PRESENT
 ```
 
-The log then shows real capture interrupts and a successful enrollment capture with no capture error:
+The log then showed real capture interrupts and a first enrollment capture:
 
 ```text
 Enroll capture (stage 0): ... error=0x00000000
 ```
 
-The enrollment continued through the required scans and completed successfully without a terminal error or warning.
+This is a major functional success: the native driver is not merely recognizing the hardware; it is operating the sensor and capturing a real fingerprint.
 
-### Why this success matters
+### Important correction: full enrollment was NOT completed
 
-This is not merely successful USB enumeration or driver probing. The native MR !626 implementation has now demonstrated, on the physical HP EliteBook 840 G6 reader:
+The first interpretation of this run was too optimistic. The example explicitly requires **8 successful scans**, but the captured log proves only the first enrollment sample (`stage 0`). There is no evidence of later stages completing, no final successful enrollment callback, and no locally persisted `test-storage.variant` fingerprint record.
 
-- device recognition,
-- firmware interrogation,
-- external data loading,
-- initialization command acceptance,
-- pairing-state validation,
-- TLS key loading,
-- successful TLS handshake,
-- exact `0xd51` / 57K0 sensor identification,
-- factory-data reading,
-- three-pass sensor calibration,
-- successful device open,
-- real finger detection,
-- capture activity,
-- successful fingerprint enrollment.
+A later verification attempt therefore failed immediately with:
 
-This crosses the most important functional threshold of the project: the reader is no longer merely "recognized" under Linux; the native driver can actually operate it and enroll a real fingerprint.
+```text
+Error loading storage, assuming it is empty
+Failed to load fingerprint data
+Did you remember to enroll your right index finger first?
+```
+
+Inspection of the example source confirmed that a completed enrollment should call `print_data_save(...)`, which writes the local test storage file. Because that file was never created, the current evidence is consistent with enrollment stopping after the first capture rather than completing all eight scans.
+
+The present investigation is therefore focused on the state-machine behavior immediately after `Enroll capture (stage 0)`.
 
 ---
 
@@ -479,13 +469,14 @@ This crosses the most important functional threshold of the project: the reader 
 - Sensor calibration succeeds.
 - The native driver opens the reader successfully.
 - The reader detects a real finger.
-- Enrollment capture succeeds.
-- **Native build-tree fingerprint enrollment succeeds.**
+- A real fingerprint capture succeeds at enrollment `stage 0`.
 
-### Still to prove
+### Not yet proven
 
-- Verification matches the newly enrolled right index finger.
-- Verification rejects a different finger.
+- Full 8-scan enrollment completion.
+- Creation of a persistent enrolled-print record.
+- Verification of the correct finger.
+- Rejection of a wrong finger.
 - Normal non-root device access through an appropriate udev rule.
 - Reliable fprintd integration using the native driver.
 - System installation strategy for the experimental/native driver and required data.
@@ -537,17 +528,25 @@ Build-tree runtime testing still uses temporary elevation for USB access.
 
 ## 16. Immediate next milestone
 
-The correct next test is **verification from the same native build tree**.
+The immediate task is to inspect what happens directly after the first successful enrollment capture.
 
-The verification test should establish both sides:
+The next diagnostic target is the tail of:
 
-1. the enrolled right index finger returns a match;
-2. a different finger is rejected.
+```text
+~/fingerprint-path1/enroll-runtime-3.txt
+```
 
-Only after build-tree verification is proven should the project move to normal-user USB permissions, fprintd/system integration, and then PAM/login/sudo.
+The goal is to determine whether the driver:
+
+- interprets a post-capture sensor status incorrectly,
+- terminates enrollment after the first sample,
+- fails to transition back to "finger needed" for scan 2,
+- or encounters another silent state-machine condition.
+
+Only after full multi-scan enrollment is proven should verification and then fprintd/PAM integration proceed.
 
 ---
 
 ## 17. Current project state in one sentence
 
-> **Native Linux operation of the HP EliteBook 840 G6 `06cb:00b7` fingerprint reader has crossed the functional threshold: libfprint MR !626 now opens and identifies the reader as a 57K0/`0xd51` sensor, completes TLS and calibration, detects a real finger, captures it, and successfully completes build-tree fingerprint enrollment; verification is the next milestone.**
+> **Native Linux operation of the HP EliteBook 840 G6 `06cb:00b7` fingerprint reader has crossed a major functional threshold: libfprint MR !626 now opens and identifies the reader as a 57K0/`0xd51` sensor, completes TLS and calibration, detects a real finger, and captures the first enrollment sample successfully; the remaining blocker is completing the full 8-scan enrollment sequence before verification and daily-use integration can begin.**
