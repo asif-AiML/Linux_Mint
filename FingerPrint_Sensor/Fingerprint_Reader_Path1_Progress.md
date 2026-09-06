@@ -6,7 +6,7 @@
 **OS:** Linux Mint 22.3 (Zena), Ubuntu Noble base  
 **Kernel during testing:** `7.0.0-30-generic`  
 **Known-good driver:** libfprint MR !626 at `0fd78560a245eebec1c93e71ee1f29b15ec1be67`  
-**Current state:** Native libfprint, `fprintd`, and PAM-backed `sudo` authentication are now proven working. Correct fingerprint authenticates; a wrong fingerprint falls back safely to password.
+**Current state:** Native libfprint, `fprintd`, PAM-backed `sudo`, lock-screen unlock, and cold-boot fingerprint authentication all work. The remaining limitation is LightDM/Mint greeter UX: after a successful fingerprint on fresh boot, the greeter still requires clicking **Log In** before entering the desktop.
 
 ---
 
@@ -131,7 +131,7 @@ This preserves password fallback.
 
 ---
 
-## MAJOR MILESTONE: sudo fingerprint authentication works
+## sudo fingerprint authentication
 
 A fresh sudo authentication was forced with:
 
@@ -157,7 +157,80 @@ correct fingerprint  -> sudo authentication succeeds
 wrong fingerprint    -> password fallback remains available
 ```
 
-This is the desired safe daily-use behavior.
+---
+
+## Lock-screen authentication
+
+The Cinnamon lock screen was tested after PAM fingerprint authentication was enabled.
+
+Observed behavior:
+
+```text
+wake lock screen
+-> fingerprint prompt appears
+-> enrolled right index unlocks session
+```
+
+A wrong-finger test also behaved correctly:
+
+```text
+wrong fingerprint
+-> fingerprint authentication fails
+-> normal password fallback is offered
+```
+
+Therefore lock-screen fingerprint unlock and password fallback are both proven.
+
+### Lock-screen UX note
+
+When the screen is fully locked / screensaver state is active, the user must first wake the unlock UI with a keyboard/mouse event before fingerprint authentication begins. The fingerprint sensor itself is not currently used as the wake event. This is a Cinnamon screensaver/greeter UX limitation, not a sensor or fprintd failure.
+
+---
+
+## Reboot persistence and fresh-boot login
+
+A full reboot was performed after system-wide integration.
+
+The fingerprint stack survived reboot successfully:
+
+```text
+systemd drop-in persists                 PASS
+staged libfprint still loads             PASS
+Validity data remains accessible         PASS
+enrolled fingerprint persists            PASS
+PAM fingerprint authentication persists  PASS
+fresh-boot fingerprint prompt appears    PASS
+```
+
+At the Mint/LightDM login screen, the greeter displays the fingerprint instruction and accepts the enrolled right index finger.
+
+However, successful fingerprint authentication does **not** automatically enter the desktop. After touching the sensor successfully, the greeter still requires manually clicking the **Log In** button.
+
+Observed cold-boot flow:
+
+```text
+boot
+-> LightDM/Mint greeter shows fingerprint prompt
+-> touch enrolled right index finger
+-> fingerprint authentication succeeds
+-> greeter remains on login card
+-> user clicks "Log In"
+-> desktop session starts
+```
+
+This means:
+
+```text
+cold-boot fingerprint authentication  PASS
+reboot persistence                    PASS
+cold-boot login UX                    SUBOPTIMAL
+```
+
+The extra **Log In** click makes fingerprint login slower than the previous password-only workflow for this user. This is currently the main usability gap.
+
+Important distinction: the limitation is in the LightDM/Mint greeter workflow after successful PAM authentication, not in libfprint, the sensor driver, fprintd, or PAM itself.
+
+A separate follow-up direction is to investigate whether the greeter can automatically submit/enter the session after successful fingerprint authentication without weakening password fallback or destabilizing login.
 
 ---
 
@@ -167,7 +240,7 @@ This is the desired safe daily-use behavior.
 Physical sensor detection                 PASS
 Native driver open                        PASS
 TLS/session                               PASS
-Calibration                               PASS
+Calibration                              PASS
 Native enrollment                         PASS
 Native correct-finger verify              PASS
 Native wrong-finger rejection             PASS
@@ -179,9 +252,11 @@ fprintd wrong-finger rejection            PASS
 PAM fingerprint profile enabled           PASS
 sudo correct-finger authentication        PASS
 sudo wrong-finger password fallback       PASS
-Desktop login                             NEXT
-Lock-screen unlock                        NEXT
-Reboot persistence                        PENDING
+Lock-screen fingerprint unlock            PASS
+Lock-screen password fallback             PASS
+Fresh-boot fingerprint authentication     PASS
+Reboot persistence                        PASS
+Fresh-boot auto-enter desktop              NOT YET
 Suspend/resume                            PENDING
 Rollback documentation                    PENDING
 ```
@@ -201,12 +276,18 @@ Password authentication remains enabled.
 
 ---
 
-## Immediate next milestone
+## Immediate next direction
 
-Test the desktop authentication path carefully, starting with the lock screen before relying on fingerprint for a fresh boot login. Keep password fallback available throughout testing.
+The fingerprint stack itself is now proven for daily system authentication.
+
+The next optional UX investigation is separate from core fingerprint support:
+
+> Determine whether Linux Mint's LightDM/greeter can automatically enter the desktop immediately after successful fingerprint authentication, removing the extra **Log In** click while preserving password fallback and login safety.
+
+After that, remaining reliability work is suspend/resume testing plus final cleanup/rollback documentation.
 
 ---
 
 ## Current project state in one sentence
 
-> **The HP EliteBook 840 G6 `06cb:00b7` fingerprint reader now works through Linux Mint's native authentication stack: MR !626 drives the sensor, fprintd enrolls and verifies correctly, and PAM-backed sudo authentication accepts the enrolled right index finger while safely falling back to the normal password after a failed fingerprint attempt.**
+> **The HP EliteBook 840 G6 `06cb:00b7` fingerprint reader now works through Linux Mint's native authentication stack for fprintd verification, sudo, lock-screen unlock, and fresh-boot authentication, and the complete setup persists across reboot; the only observed cold-boot limitation is that Mint's LightDM greeter still requires clicking `Log In` after a successful fingerprint instead of entering the desktop automatically.**
