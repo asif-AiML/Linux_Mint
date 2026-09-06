@@ -30,13 +30,11 @@ The stock Linux Mint / Ubuntu Noble libfprint stack did not expose this sensor, 
 
 # Project status
 
-The work is deliberately split into two phases.
-
 ## Phase 1 — Native sensor support
 
-**COMPLETED AND PROVEN.**
+**COMPLETE AND PROVEN.**
 
-This phase proves that the reader itself works natively under Linux:
+The reader works natively under Linux at the libfprint level:
 
 - device detection;
 - firmware communication;
@@ -49,33 +47,30 @@ This phase proves that the reader itself works natively under Linux:
 
 ## Phase 2 — System-wide daily use
 
-**NOT COMPLETED YET.**
+**IN PROGRESS.**
 
-This will cover:
+The following Phase 2 milestones are already proven:
 
-- permanent system installation;
-- non-root USB access;
-- `fprintd` integration;
+- Linux Mint `fprintd` can load the known-good MR !626 libfprint build through a systemd override;
+- `fprintd-list` detects the sensor correctly;
+- the required Validity data can be installed as real system files under `/usr/local/share/libfprint/validity/`;
+- `fprintd-enroll` successfully completes a full right-index enrollment.
+
+Still to prove:
+
+- `fprintd-verify` correct-finger and wrong-finger behavior;
 - `sudo` authentication;
 - desktop login;
 - lock-screen unlock;
 - reboot persistence;
 - suspend/resume reliability;
-- rollback/uninstall instructions.
+- final cleanup and rollback instructions.
 
-Do not modify PAM or replace the system libfprint using only Phase 1 instructions.
+Do not modify PAM until `fprintd-verify` has been proven first.
 
 ---
 
 # Files preserved in this repository
-
-The dedicated fingerprint project folder is:
-
-```text
-FingerPrint_Sensor/
-```
-
-The intended permanent layout is:
 
 ```text
 FingerPrint_Sensor/
@@ -97,35 +92,29 @@ FingerPrint_Sensor/
         └── tls_password.bin
 ```
 
-The `permanent-data/validity/` files are the exact known-good binary data used by the working sensor setup. They should be reused directly on future installs instead of being regenerated from changing upstream projects.
+These are the frozen known-good Validity files used by the successful setup.
 
 ---
 
 # Phase 1 — Fresh-install procedure
 
-Follow these steps in order.
-
-## Step 1 — Confirm the fingerprint reader is the expected device
-
-Run:
+## Step 1 — Confirm the hardware
 
 ```bash
 lsusb | grep -i 06cb:00b7
 ```
 
-Expected output should contain something similar to:
+Expected to contain:
 
 ```text
 06cb:00b7 Synaptics, Inc. Fingerprint reader
 ```
 
-If `06cb:00b7` is not present, stop. This guide is specifically validated for that reader.
+If `06cb:00b7` is not present, stop. This guide is validated specifically for that reader.
 
 ---
 
-## Step 2 — Install the required build packages
-
-Run:
+## Step 2 — Install build dependencies
 
 ```bash
 sudo apt update
@@ -142,15 +131,11 @@ sudo apt install -y \
   gobject-introspection
 ```
 
-If this command completes without an APT error, continue.
-
 ---
 
-## Step 3 — Clone the exact libfprint version that was proven to work
+## Step 3 — Clone the exact known-good libfprint source
 
-Do **not** simply build the newest libfprint source and assume it behaves the same.
-
-The known-good commit is:
+Known-good commit:
 
 ```text
 0fd78560a245eebec1c93e71ee1f29b15ec1be67
@@ -167,7 +152,7 @@ git checkout 0fd78560a245eebec1c93e71ee1f29b15ec1be67
 cd ..
 ```
 
-Verify the source revision:
+Verify:
 
 ```bash
 git -C libfprint rev-parse HEAD
@@ -179,13 +164,9 @@ Expected exactly:
 0fd78560a245eebec1c93e71ee1f29b15ec1be67
 ```
 
-If the value differs, do not continue until the checkout is corrected.
-
 ---
 
-## Step 4 — Create the build-tools environment
-
-Run:
+## Step 4 — Create the build environment
 
 ```bash
 python3 -m venv tools-venv
@@ -193,41 +174,31 @@ source tools-venv/bin/activate
 pip install meson ninja
 ```
 
-The original successful environment used:
+Known-good reference versions:
 
 ```text
 Meson 1.12.0
 Ninja 1.13.2
 ```
 
-Those versions are useful reference points, but the exact libfprint commit above is the more important reproducibility anchor.
-
 ---
 
 ## Step 5 — Build only the Validity driver
-
-Run:
 
 ```bash
 meson setup build libfprint -Ddrivers=validity -Ddoc=false
 ninja -C build
 ```
 
-The original successful build ended at:
+The successful build completed cleanly.
 
-```text
-[120/120]
-```
-
-The exact task count may vary with tooling, but the build must finish successfully with no fatal error.
-
-**Do not run `ninja install` during Phase 1.**
+Do **not** run `ninja install`.
 
 ---
 
-## Step 6 — Verify the preserved Validity files
+## Step 6 — Verify the preserved Validity data
 
-From the root of the `FingerPrint_Sensor` folder, run:
+From `FingerPrint_Sensor/`:
 
 ```bash
 cd permanent-data/validity
@@ -235,7 +206,7 @@ sha256sum -c SHA256SUMS
 cd ../..
 ```
 
-All nine entries should end in:
+All nine entries must report:
 
 ```text
 OK
@@ -255,36 +226,36 @@ bee4814c74c5f1effe5dc26772c7531dbb1a14c70647cb8a14c8233a1cd0a72a  permanent-data
 9bccbf4b561a4c3dda02a4dfd93c8fc5d12bcc46899b3b9ddd2d71a446941965  permanent-data/validity/tls_password.bin
 ```
 
-If any file reports `FAILED`, stop. Do not use a corrupted or modified blob.
+If any file reports `FAILED`, stop.
 
 ---
 
-## Step 7 — Expose the Validity data to libfprint
+## Step 7 — Install the Validity data as real system files
 
-The tested driver searches under:
+This is important: do **not** use symlinks from `/usr/local/share/libfprint/validity/` back into your home directory for the final/system-wide setup.
+
+`fprintd.service` uses:
 
 ```text
-/usr/local/share/libfprint/validity/
+ProtectHome=true
 ```
 
-Create the directory:
+so it cannot follow such symlinks into `/home/...`.
+
+Install the device-specific files:
 
 ```bash
 sudo mkdir -p /usr/local/share/libfprint/validity/06cb_00b7
+sudo install -m 0644 \
+  permanent-data/validity/06cb_00b7/init.bin \
+  permanent-data/validity/06cb_00b7/db_write_enable.bin \
+  /usr/local/share/libfprint/validity/06cb_00b7/
 ```
 
-Copy the device-specific files:
+Install the shared files:
 
 ```bash
-sudo cp permanent-data/validity/06cb_00b7/init.bin \
-        permanent-data/validity/06cb_00b7/db_write_enable.bin \
-        /usr/local/share/libfprint/validity/06cb_00b7/
-```
-
-Copy the shared Validity files:
-
-```bash
-sudo cp \
+sudo install -m 0644 \
   permanent-data/validity/partition_sig_standard.bin \
   permanent-data/validity/partition_sig_0090.bin \
   permanent-data/validity/ca_pubkey.bin \
@@ -295,13 +266,13 @@ sudo cp \
   /usr/local/share/libfprint/validity/
 ```
 
-Do **not** add `reset.bin` or `init_clean_slate.bin`. They were not required for this hardware.
+Do not add `reset.bin` or `init_clean_slate.bin`; they were not needed.
 
 ---
 
-## Step 8 — Run the native enrollment test
+## Step 8 — Optional build-tree enrollment test
 
-Run this from the directory that contains `build/` and `libfprint/`:
+This proves the native driver before system integration.
 
 ```bash
 source tools-venv/bin/activate
@@ -309,38 +280,23 @@ sudo env LD_LIBRARY_PATH="$PWD/build/libfprint" \
   ./build/examples/enroll
 ```
 
-Choose the finger you want to enroll and follow the prompts.
-
-The known-good test used the **right index finger**.
-
-Successful enrollment is confirmed by output equivalent to:
+Known-good result includes:
 
 ```text
 ENROLL_NUM_STATES completed successfully
-Device reported enroll completion (... error: none)
 Print for finger FP_FINGER_RIGHT_INDEX enrolled
 ```
 
-The example should also create:
-
-```text
-test-storage.variant
-```
-
-That file belongs only to the libfprint example test. It is not the final system-wide fingerprint database.
-
 ---
 
-## Step 9 — Verify the enrolled finger
+## Step 9 — Optional build-tree verification test
 
-Run:
+Correct finger:
 
 ```bash
 sudo env LD_LIBRARY_PATH="$PWD/build/libfprint" \
   ./build/examples/verify
 ```
-
-Touch the same finger that was enrolled.
 
 Expected:
 
@@ -348,20 +304,7 @@ Expected:
 MATCH!
 ```
 
-The original successful run also reported that the right index finger matched successfully.
-
----
-
-## Step 10 — Test rejection with a different finger
-
-Run the same command again:
-
-```bash
-sudo env LD_LIBRARY_PATH="$PWD/build/libfprint" \
-  ./build/examples/verify
-```
-
-This time deliberately use a different, non-enrolled finger.
+Repeat with a different finger.
 
 Expected:
 
@@ -369,17 +312,221 @@ Expected:
 NO MATCH!
 ```
 
-If the enrolled finger gives `MATCH!` and a different finger gives `NO MATCH!`, Phase 1 is successfully reproduced.
+At this point Phase 1 is complete.
 
 ---
 
-# What is stable and what may change
+# Phase 2 — System-wide `fprintd` integration
 
-This distinction is important for future maintenance.
+The following steps are already proven on the real machine.
 
-## Stable known-good facts
+## Step 1 — Confirm how `fprintd` is installed
 
-Treat these as the frozen fallback configuration:
+```bash
+dpkg -L fprintd | grep -E '/fprintd$|systemd|dbus'
+```
+
+Known-good Mint installation uses:
+
+```text
+/usr/libexec/fprintd
+/usr/lib/systemd/system/fprintd.service
+```
+
+---
+
+## Step 2 — Confirm the daemon expects the same libfprint SONAME
+
+```bash
+ldd /usr/libexec/fprintd | grep -i fprint
+```
+
+The daemon expects:
+
+```text
+libfprint-2.so.2
+```
+
+Confirm the built library has the same SONAME:
+
+```bash
+readelf -d build/libfprint/libfprint-2.so.2.0.0 | grep SONAME
+```
+
+Expected:
+
+```text
+Library soname: [libfprint-2.so.2]
+```
+
+---
+
+## Step 3 — Confirm the loader can redirect `fprintd` to the build
+
+```bash
+LD_LIBRARY_PATH="$PWD/build/libfprint" \
+ldd /usr/libexec/fprintd | grep -i fprint
+```
+
+Expected `libfprint-2.so.2` to resolve to the build-tree library.
+
+---
+
+## Step 4 — Stage the known-good libfprint under `/usr/local`
+
+```bash
+sudo mkdir -p /usr/local/lib/fprintd-validity
+sudo cp -a \
+  build/libfprint/libfprint-2.so.2 \
+  build/libfprint/libfprint-2.so.2.0.0 \
+  /usr/local/lib/fprintd-validity/
+```
+
+This does **not** overwrite Mint's distro libfprint.
+
+For a clean final state, root ownership is preferred:
+
+```bash
+sudo chown -R root:root /usr/local/lib/fprintd-validity
+```
+
+---
+
+## Step 5 — Create a reversible systemd override
+
+Do not edit `/usr/lib/systemd/system/fprintd.service` directly.
+
+Create a drop-in:
+
+```bash
+sudo mkdir -p /etc/systemd/system/fprintd.service.d
+printf '%s\n' \
+'[Service]' \
+'Environment=LD_LIBRARY_PATH=/usr/local/lib/fprintd-validity' | \
+sudo tee /etc/systemd/system/fprintd.service.d/validity.conf
+```
+
+Reload and restart:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart fprintd
+```
+
+Verify the effective environment:
+
+```bash
+systemctl show fprintd -p Environment
+```
+
+Expected:
+
+```text
+Environment=LD_LIBRARY_PATH=/usr/local/lib/fprintd-validity
+```
+
+---
+
+## Step 6 — Confirm `fprintd` sees the sensor
+
+```bash
+fprintd-list "$USER"
+```
+
+Known-good result:
+
+```text
+found 1 devices
+Device at /net/reactivated/Fprint/Device/0
+Using device /net/reactivated/Fprint/Device/0
+User asif has no fingers enrolled for Validity VCSFW Fingerprint Sensor.
+```
+
+The important part is that `Validity VCSFW Fingerprint Sensor` is detected.
+
+---
+
+## Step 7 — Important sandbox note
+
+If `fprintd-enroll` fails with:
+
+```text
+Required file init.bin not found for 06cb:00b7
+```
+
+check whether the files under `/usr/local/share/libfprint/validity/` are symlinks into `/home/...`.
+
+Because `fprintd.service` contains:
+
+```text
+ProtectHome=true
+```
+
+those symlinks will not work.
+
+Replace them with real files using the `sudo install -m 0644 ...` commands from Phase 1 Step 7.
+
+---
+
+## Step 8 — Enroll through `fprintd`
+
+Restart the daemon first:
+
+```bash
+sudo systemctl restart fprintd
+```
+
+Then enroll the right index finger:
+
+```bash
+fprintd-enroll -f right-index-finger "$USER"
+```
+
+Known-good successful output:
+
+```text
+Using device /net/reactivated/Fprint/Device/0
+Enrolling right-index-finger finger.
+Enroll result: enroll-stage-passed
+Enroll result: enroll-stage-passed
+Enroll result: enroll-stage-passed
+Enroll result: enroll-stage-passed
+Enroll result: enroll-stage-passed
+Enroll result: enroll-stage-passed
+Enroll result: enroll-stage-passed
+Enroll result: enroll-stage-passed
+Enroll result: enroll-completed
+```
+
+This is the first proven full system-level enrollment through Linux Mint's normal `fprintd` service.
+
+---
+
+# Current Phase 2 checkpoint
+
+At this point the following are proven:
+
+```text
+fprintd loads known-good MR !626 libfprint     PASS
+fprintd sees 06cb:00b7                         PASS
+Validity data accessible to sandboxed daemon  PASS
+fprintd right-index enrollment                 PASS
+```
+
+Next required test before touching PAM:
+
+```text
+fprintd-verify correct finger
+fprintd-verify wrong finger
+```
+
+Only after those succeed should `sudo`, login, and lock-screen authentication be enabled.
+
+---
+
+# Stable vs changing pieces
+
+## Stable known-good anchors
 
 ```text
 USB ID                  06cb:00b7
@@ -391,56 +538,25 @@ Required DB file         db_write_enable.bin
 Shared Validity files    7 files listed above
 ```
 
-The preserved binary bundle in `permanent-data/validity/` is part of this known-good configuration.
+## Things that may change
 
-## Things that may change in the future
-
-These should never be assumed to stay identical:
-
-- libfprint `master`;
+- current upstream libfprint `master`;
 - MR !626 branch state;
-- newer libfprint commits;
-- Linux Mint / Ubuntu package versions;
-- Meson / Ninja versions;
-- upstream Validity-data projects;
-- package dependency names in future distributions;
-- whether Linux Mint eventually ships direct support for `06cb:00b7`.
+- Mint/Ubuntu package versions;
+- Meson/Ninja versions;
+- service hardening details in future `fprintd` releases;
+- whether Mint eventually ships direct support for `06cb:00b7`.
 
-If a future Linux Mint release supports `06cb:00b7` directly through its normal packaged libfprint, prefer the distro-native implementation. Keep this guide as the proven fallback.
+If a future distro release supports the sensor natively, prefer the distro-native path and keep this guide as the known-good fallback.
 
 ---
 
 # For AI assistants reading this repository
 
-If you are an AI assistant helping with this project:
-
-1. Read `README.md` first for the current high-level state.
-2. Use this file for the known-good reproduction procedure.
-3. Use `Fingerprint_Reader_Path1_Progress.md` only when historical debugging context is needed.
-4. Do not suggest regenerating the Validity binary files unless the preserved bundle is missing or verified corrupt.
-5. Do not replace the system libfprint or modify PAM based only on Phase 1.
-6. The native driver itself is already proven functional; do not restart hardware-support investigation unless new evidence shows regression.
-7. Phase 2 should be approached as system integration of a proven driver, not as another sensor reverse-engineering task.
-
----
-
-# Phase 2 — System-wide daily use
-
-**Pending.**
-
-This section will be added only after each step is tested successfully on the real machine.
-
-Planned validation order:
-
-1. safe permanent installation strategy for the proven libfprint build;
-2. normal non-root USB access;
-3. `fprintd-enroll`;
-4. `fprintd-verify`;
-5. `sudo` authentication;
-6. desktop login;
-7. lock-screen unlock;
-8. reboot persistence;
-9. suspend/resume reliability;
-10. rollback / uninstall procedure.
-
-Until then, Phase 1 proves that the hardware and native driver work, but it is not yet the daily-use system configuration.
+1. Read `README.md` first.
+2. Treat Phase 1 as solved.
+3. Treat the current Phase 2 checkpoint as: **`fprintd-enroll` works successfully.**
+4. Do not restart reverse engineering unless new evidence shows a regression.
+5. Do not regenerate the preserved Validity files unless they are missing or fail SHA-256 verification.
+6. Do not replace Mint's system libfprint blindly; the proven method currently stages the library under `/usr/local/lib/fprintd-validity/` and uses a systemd override.
+7. Do not enable PAM until `fprintd-verify` has been proven for both correct and incorrect fingers.
