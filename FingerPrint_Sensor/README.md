@@ -4,7 +4,7 @@ This folder contains the complete working context for the built-in fingerprint r
 
 ## Current status
 
-The sensor itself is **solved and proven working natively under Linux**, and Phase 2 system integration is now partially complete.
+The sensor itself is **solved and proven working natively under Linux**, and Phase 2 system integration is now well underway.
 
 Hardware:
 
@@ -37,9 +37,13 @@ native wrong finger                      NO MATCH
 fprintd loads staged MR !626 libfprint   PASS
 fprintd detects 06cb:00b7                PASS
 fprintd right-index enrollment           PASS
+fprintd correct-finger verification      PASS
+fprintd wrong-finger rejection           PASS
+PAM fingerprint profile enabled          PASS
+sudo fingerprint authentication          PASS
 ```
 
-So this is no longer a hardware-support investigation. The active work is now **system authentication integration**.
+So this is no longer a hardware-support investigation. The active work is now **finishing daily system authentication integration and reliability testing**.
 
 ---
 
@@ -49,7 +53,7 @@ So this is no longer a hardware-support investigation. The active work is now **
 
 Start here when setting up the reader on a fresh Linux Mint install.
 
-It contains the refined, reproducible successful path. Phase 1 is complete and the currently proven part of Phase 2 is now documented there as well.
+It contains the refined, reproducible successful path. Phase 1 is complete and the proven part of Phase 2 is documented there as the integration advances.
 
 ### `Fingerprint_Reader_Path1_Progress.md`
 
@@ -100,18 +104,19 @@ Already proven:
 2. a systemd drop-in can make `/usr/libexec/fprintd` load that staged library;
 3. `fprintd-list` detects the Validity sensor;
 4. the Validity files must be real system files rather than symlinks into `/home` because `fprintd.service` uses `ProtectHome=true`;
-5. `fprintd-enroll` completes full right-index enrollment successfully.
+5. `fprintd-enroll` completes full right-index enrollment successfully;
+6. `fprintd-verify` accepts the enrolled right index and rejects a different finger;
+7. Mint's packaged `Fingerprint authentication` PAM profile can be enabled with `pam-auth-update` while keeping password authentication enabled;
+8. `sudo -k && sudo true` prompts for the right index finger and succeeds immediately after a correct touch.
 
 Still to prove:
 
-1. `fprintd-verify` correct finger;
-2. `fprintd-verify` wrong finger rejection;
-3. `sudo` authentication;
-4. desktop login;
-5. lock-screen unlock;
-6. reboot persistence;
-7. suspend/resume reliability;
-8. clean rollback/uninstall path.
+1. password fallback behavior after a failed fingerprint attempt;
+2. desktop login;
+3. lock-screen unlock;
+4. reboot persistence;
+5. suspend/resume reliability;
+6. clean rollback/uninstall path.
 
 ---
 
@@ -123,7 +128,7 @@ Still to prove:
 - Do not run `ninja install` or overwrite Mint's system libfprint casually.
 - The currently proven integration method stages libfprint under `/usr/local/lib/fprintd-validity/` and uses a systemd override.
 - Do not use Validity symlinks that point into `/home/...` for `fprintd`; its service sandbox blocks them.
-- Do not modify PAM until `fprintd-verify` is proven first.
+- Keep password authentication enabled as fallback while testing login and lock-screen integration.
 - Keep all fingerprint-specific files inside this `FingerPrint_Sensor/` directory in the `Linux_Mint` repository.
 
 ---
@@ -136,8 +141,9 @@ If this repository is handed to an AI assistant:
 2. Read `Fingerprint_Reader_Setup_Guide.md` for the reproducible successful path.
 3. Read `Fingerprint_Reader_Path1_Progress.md` only when detailed debugging context is needed.
 4. Treat Phase 1 as solved.
-5. Treat the current Phase 2 checkpoint as: **`fprintd-enroll` works successfully.**
-6. Continue with `fprintd-verify` before suggesting any PAM changes.
-7. Treat the known-good libfprint commit and preserved Validity files as immutable fallback anchors.
+5. Treat `fprintd` enrollment and correct/wrong verification as solved.
+6. Treat PAM-backed `sudo` fingerprint authentication as proven working.
+7. Continue with password-fallback validation, then desktop login and lock-screen testing one step at a time.
+8. Treat the known-good libfprint commit and preserved Validity files as immutable fallback anchors.
 
-The immediate engineering objective is to prove correct/wrong-finger verification through `fprintd`, then enable Linux Mint authentication features one by one with password fallback preserved.
+The immediate engineering objective is to validate password fallback after a failed fingerprint attempt before moving on to graphical login and lock-screen authentication.
