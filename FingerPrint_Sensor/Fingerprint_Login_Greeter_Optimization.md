@@ -263,23 +263,27 @@ The fix is therefore not a fingerprint-driver workaround and not a PAM bypass. I
 
 ---
 
-## Verification against the installed Mint build
+## Installed Mint build verification — correction
 
-The installed binary was checked for the newer upstream logic with:
+An earlier check used:
 
 ```bash
 strings /usr/sbin/slick-greeter | grep -F "Login immediately if PAM interacted"
 ```
 
-Result:
+and produced no output.
+
+That test is **not valid evidence** that the installed Mint binary lacks the upstream fix because the searched phrase is a source-code comment. Compiler output normally does not retain such comments in the executable.
+
+Therefore the correct conclusion is:
 
 ```text
-no output
+exact upstream 2.2.6 source lacks the fix        CONFIRMED
+Mint's exact 2.2.6+zena packaged source state   NOT YET PROVEN
+installed binary membership of the fix           NOT CONCLUSIVELY DETERMINED
 ```
 
-This is consistent with the installed `slick-greeter 2.2.6+zena` build not containing the newer July 2026 auto-login behavior.
-
-This does **not** mean Linux Mint as a whole is outdated. It means the currently installed Mint greeter package does not yet contain this specific upstream change.
+The observed login behavior remains fully consistent with the old 2.2.6 logic, but behavior alone is not treated as a source-level proof of Mint's exact package contents.
 
 ---
 
@@ -386,38 +390,61 @@ This dependency surface is consistent with a normal GTK3/LightDM greeter and doe
 
 ---
 
-## Current build stage
+## Local build stage — SUCCESS
 
-The next operation is a **local Meson configure only**:
+Meson `1.12.0` from the existing project-local environment was used:
+
+```text
+~/fingerprint-path1/tools-venv
+```
+
+Missing build dependencies were resolved incrementally:
+
+```text
+valac
+libcanberra-dev
+liblightdm-gobject-1-dev
+```
+
+Meson configuration then completed successfully.
+
+The patched source was compiled locally with:
 
 ```bash
 cd ~/fingerprint-path1/slick-greeter-2.2.6
-meson setup build
-```
-
-Purpose:
-
-```text
-confirm build dependencies
-confirm the patched 2.2.6 tree configures successfully
-identify any missing development packages
-```
-
-Important safety property:
-
-```text
-meson setup build
-```
-
-only creates a build directory inside the local source workspace. It does not install or replace the system greeter.
-
-If configuration succeeds, the next stage will be local compilation with:
-
-```bash
 ninja -C build
 ```
 
-Again, no system installation will be performed at that point.
+Result:
+
+```text
+Compilation succeeded - 60 warning(s)
+[156/156] Linking target src/slick-greeter
+```
+
+The warnings are primarily deprecation and nullability warnings from the existing codebase and did not prevent compilation.
+
+Produced executable:
+
+```text
+~/fingerprint-path1/slick-greeter-2.2.6/build/src/slick-greeter
+```
+
+Observed file information:
+
+```text
+-rwxrwxr-x 1 asif asif 1.9M ... build/src/slick-greeter
+```
+
+The local build remains isolated inside the experimental workspace. No system greeter file has been replaced.
+
+A `strings` check against the locally built binary using the source-code comment text also produced no output. This is expected and reinforces that such a comment-string search is not a suitable binary verification method.
+
+The patched source itself should instead be verified directly for the new runtime symbol/logic, for example with:
+
+```bash
+grep -n "auth_interaction_seen" src/greeter-list.vala
+```
 
 ---
 
@@ -434,7 +461,9 @@ Source-level cause                          CONFIRMED
 Upstream fix                                IDENTIFIED
 Fix applies cleanly to 2.2.6                PASS
 Local patched source tree                   READY
-Local Meson configure                       IN PROGRESS
+Local Meson configure                       PASS
+Local patched compile                       PASS
+Patched binary produced                     PASS
 System greeter modified                     NO
 ```
 
@@ -450,7 +479,7 @@ Desired workflow:
 touch finger -> desktop
 ```
 
-Because upstream has already implemented the exact desired behavior with a focused change, and because that change cherry-picks cleanly onto the exact `2.2.6` tag, this path remains within the project's low-risk/reversible decision rule.
+Because upstream has already implemented the exact desired behavior with a focused change, because that change cherry-picks cleanly onto the exact `2.2.6` tag, and because the patched tree compiles successfully, this path remains within the project's low-risk/reversible decision rule.
 
 ---
 
@@ -462,8 +491,8 @@ Current planned route:
 
 1. use the exact `2.2.6` tagged source as the baseline;
 2. apply only upstream commit `6902ed325ef358ed4cf3af0b7f04a0d078d18d4e`;
-3. configure the patched tree locally with Meson;
-4. compile locally with Ninja;
+3. configure and compile the patched tree locally;
+4. verify the patched source contains the intended authentication logic;
 5. inspect the produced executable/package layout before any activation;
 6. design and document rollback before touching the active greeter;
 7. stage the patched greeter in a reversible way rather than blindly overwriting distro files;
@@ -521,15 +550,18 @@ Active greeter identified                  CONFIRMED
 Config-only option                         NOT AVAILABLE
 Exact upstream fix                         IDENTIFIED
 Upstream commit                            6902ed325ef358ed4cf3af0b7f04a0d078d18d4e
-Installed build contains fix               APPEARS ABSENT
 Exact upstream 2.2.6 tag                   CONFIRMED
 2.2.6 commit                               d1f81b4406d5a756d2274c3dbbbd39bd1bd0f6d4
 Source-level old behavior                  CONFIRMED
+Installed 2.2.6+zena source match          NOT YET PROVEN
+Installed binary fix presence              NOT CONCLUSIVELY DETERMINED
 Clean backport onto 2.2.6                  PASS
 Patched local commit                       75d95a9
 Build system/dependencies                  MAPPED
-Local Meson configure                      IN PROGRESS
-Reversible build/package test              PENDING
+Local Meson configure                      PASS
+Local patched compile                      PASS
+Patched local binary                       BUILT
+Reversible activation test                 PENDING
 Automatic fingerprint -> desktop login     PENDING
 Major Mint upgrade workflow                RESERVED FOR FINAL SUCCESS
 ```
@@ -538,4 +570,4 @@ Major Mint upgrade workflow                RESERVED FOR FINAL SUCCESS
 
 ## Current path in one sentence
 
-> Fingerprint authentication already succeeds at the Linux Mint boot login screen, but slick-greeter `2.2.6+zena` still requires an extra Enter/click after authentication; the exact upstream `2.2.6` source contains the old prompt-only logic, upstream commit `6902ed3` fixes this exact PAM/fingerprint behavior, and that fix cherry-picks cleanly onto `2.2.6`, so the current goal is to complete a local build and then design a reversible activation/rollback path without altering PAM or replacing LightDM.
+> Fingerprint authentication already succeeds at the Linux Mint boot login screen, but slick-greeter `2.2.6+zena` still requires an extra Enter/click after authentication; the exact upstream `2.2.6` source contains the old prompt-only logic, upstream commit `6902ed3` fixes this exact PAM/fingerprint behavior, that fix cherry-picks cleanly onto `2.2.6`, and the patched tree now configures and compiles successfully in a local isolated workspace, while the exact source state of Mint's `2.2.6+zena` package remains unproven and no system greeter file has yet been modified.
