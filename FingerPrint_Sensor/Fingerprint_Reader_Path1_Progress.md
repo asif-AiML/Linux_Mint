@@ -6,7 +6,7 @@
 **OS:** Linux Mint 22.3 (Zena), Ubuntu Noble base  
 **Kernel during testing:** `7.0.0-30-generic`  
 **Known-good driver:** libfprint MR !626 at `0fd78560a245eebec1c93e71ee1f29b15ec1be67`  
-**Current state:** Native libfprint, `fprintd`, PAM-backed `sudo`, lock-screen unlock, and cold-boot fingerprint authentication all work. The remaining limitation is LightDM/Mint greeter UX: after a successful fingerprint on fresh boot, the greeter still requires clicking **Log In** before entering the desktop.
+**Current state:** Native libfprint, `fprintd`, PAM-backed `sudo`, lock-screen unlock, reboot persistence, and cold-boot fingerprint authentication all work. The remaining work is an optional LightDM/slick-greeter UX optimization so a successful fingerprint can enter the desktop without the extra Enter/Log In confirmation.
 
 ---
 
@@ -101,17 +101,6 @@ Mint's packaged PAM profile is:
 /usr/share/pam-configs/fprintd
 ```
 
-with:
-
-```text
-Name: Fingerprint authentication
-Default: no
-Priority: 260
-Auth-Type: Primary
-Auth:
-    [success=end default=ignore] pam_fprintd.so max-tries=1 timeout=10
-```
-
 Fingerprint authentication was enabled using:
 
 ```bash
@@ -120,78 +109,28 @@ sudo pam-auth-update
 
 Only **Fingerprint authentication** was enabled; the separate Fingwit profile was left disabled.
 
-After activation, `/etc/pam.d/common-auth` contained:
-
-```text
-auth [success=2 default=ignore] pam_fprintd.so max-tries=1 timeout=10
-auth [success=1 default=ignore] pam_unix.so nullok try_first_pass
-```
-
-This preserves password fallback.
+Password fallback remains enabled and was tested successfully.
 
 ---
 
-## sudo fingerprint authentication
+## sudo and lock-screen authentication
 
-A fresh sudo authentication was forced with:
-
-```bash
-sudo -k
-sudo true
-```
-
-The prompt displayed:
+Proven behavior:
 
 ```text
-Place your right index finger on the fingerprint reader
+correct fingerprint -> sudo succeeds
+wrong fingerprint   -> password fallback works
+correct fingerprint -> Cinnamon lock screen unlocks
+wrong fingerprint   -> lock-screen password fallback works
 ```
 
-Touching the enrolled right index finger authenticated successfully and the command completed.
-
-A second test deliberately used a wrong finger. The fingerprint attempt failed and PAM correctly continued to the normal password prompt. Entering the password authenticated successfully.
-
-Therefore both paths are proven:
-
-```text
-correct fingerprint  -> sudo authentication succeeds
-wrong fingerprint    -> password fallback remains available
-```
-
----
-
-## Lock-screen authentication
-
-The Cinnamon lock screen was tested after PAM fingerprint authentication was enabled.
-
-Observed behavior:
-
-```text
-wake lock screen
--> fingerprint prompt appears
--> enrolled right index unlocks session
-```
-
-A wrong-finger test also behaved correctly:
-
-```text
-wrong fingerprint
--> fingerprint authentication fails
--> normal password fallback is offered
-```
-
-Therefore lock-screen fingerprint unlock and password fallback are both proven.
-
-### Lock-screen UX note
-
-When the screen is fully locked / screensaver state is active, the user must first wake the unlock UI with a keyboard/mouse event before fingerprint authentication begins. The fingerprint sensor itself is not currently used as the wake event. This is a Cinnamon screensaver/greeter UX limitation, not a sensor or fprintd failure.
+Lock-screen UX note: the unlock UI must first be woken with keyboard/mouse input. The fingerprint sensor itself is not used as a wake event.
 
 ---
 
 ## Reboot persistence and fresh-boot login
 
-A full reboot was performed after system-wide integration.
-
-The fingerprint stack survived reboot successfully:
+A full reboot confirmed persistence of the system-wide fingerprint stack:
 
 ```text
 systemd drop-in persists                 PASS
@@ -202,35 +141,140 @@ PAM fingerprint authentication persists  PASS
 fresh-boot fingerprint prompt appears    PASS
 ```
 
-At the Mint/LightDM login screen, the greeter displays the fingerprint instruction and accepts the enrolled right index finger.
+At the LightDM/slick-greeter login screen, the enrolled fingerprint authenticates successfully.
 
-However, successful fingerprint authentication does **not** automatically enter the desktop. After touching the sensor successfully, the greeter still requires manually clicking the **Log In** button.
+The important UX detail was refined during testing: a mouse click on **Log In** is not required specifically; pressing **Enter** also confirms the already-authenticated login.
 
-Observed cold-boot flow:
-
-```text
-boot
--> LightDM/Mint greeter shows fingerprint prompt
--> touch enrolled right index finger
--> fingerprint authentication succeeds
--> greeter remains on login card
--> user clicks "Log In"
--> desktop session starts
-```
-
-This means:
+Current cold-boot flow:
 
 ```text
-cold-boot fingerprint authentication  PASS
-reboot persistence                    PASS
-cold-boot login UX                    SUBOPTIMAL
+touch enrolled fingerprint -> press Enter -> desktop
 ```
 
-The extra **Log In** click makes fingerprint login slower than the previous password-only workflow for this user. This is currently the main usability gap.
+Previous PIN flow:
 
-Important distinction: the limitation is in the LightDM/Mint greeter workflow after successful PAM authentication, not in libfprint, the sensor driver, fprintd, or PAM itself.
+```text
+type 4-digit PIN -> press Enter -> desktop
+```
 
-A separate follow-up direction is to investigate whether the greeter can automatically submit/enter the session after successful fingerprint authentication without weakening password fallback or destabilizing login.
+So cold-boot fingerprint authentication itself is fully working. The remaining issue is only the extra final confirmation after successful PAM authentication.
+
+---
+
+## LightDM / slick-greeter optimization investigation
+
+Active greeter package:
+
+```text
+slick-greeter 2.2.6+zena
+```
+
+The installed GSettings schema exposes visual/UI configuration only and has no option for fingerprint auto-submit or automatic session start after PAM success.
+
+Upstream contains an exact fix for this behavior:
+
+```text
+commit: 6902ed325ef358ed4cf3af0b7f04a0d078d18d4e
+title:  Don't force authenticated user to press the Log In button
+date:   2026-07-01
+```
+
+The exact upstream `2.2.6` tag points to:
+
+```text
+d1f81b4406d5a756d2274c3dbbbd39bd1bd0f6d4
+```
+
+That source contains the old `prompted`-based authentication logic. The upstream fix changes the logic to track broader PAM interaction with `auth_interaction_seen`, which covers `pam_fprintd` informational messages.
+
+The fix was fetched and cherry-picked cleanly onto exact upstream `2.2.6`:
+
+```text
+local patched commit: 75d95a9
+merge conflicts:      NONE
+```
+
+Patched source verification:
+
+```text
+auth_interaction_seen declaration     PRESENT
+message/prompt tracking               PRESENT
+auth-complete condition               PRESENT
+state reset logic                     PRESENT
+```
+
+The patched tree configured and compiled successfully with Meson/Ninja.
+
+Build result:
+
+```text
+Compilation succeeded - 60 warning(s)
+[156/156] Linking target src/slick-greeter
+```
+
+The warnings were non-fatal existing-code deprecation/nullability warnings.
+
+### Runtime compatibility checks
+
+The patched binary and Mint's stock `/usr/sbin/slick-greeter` resolve the same normal system shared-library set, including GTK3, GDK, Cairo, `libcanberra`, `liblightdm-gobject-1`, GLib/GIO, X11 and Pixman.
+
+No missing shared libraries were found.
+
+The patched binary has no `RPATH` or `RUNPATH`, so it does not depend on the local build tree or Python virtual environment at runtime.
+
+An initial build used Meson's default `/usr/local` prefix and therefore embedded `/usr/local/share/slick-greeter` asset paths. That build was deliberately rejected for staging.
+
+The tree was rebuilt correctly with:
+
+```bash
+meson setup build --prefix=/usr
+ninja -C build
+```
+
+After rebuild, all relevant embedded asset paths point to Mint's real asset location:
+
+```text
+/usr/share/slick-greeter
+```
+
+### Stock greeter anchor
+
+Current installed stock binary:
+
+```text
+-rwxr-xr-x 1 root root 424168 Jan  8  2026 /usr/sbin/slick-greeter
+```
+
+SHA-256:
+
+```text
+583acf57cd2fdf15db0118649b03983f0ad24c4cbc9a6a8309610fe87667a1aa  /usr/sbin/slick-greeter
+```
+
+This hash is recorded as a rollback/reference anchor before any activation experiment.
+
+The stock package also owns `/usr/share/slick-greeter/` assets and `/usr/share/xgreeters/slick-greeter.desktop`, whose launcher is simply:
+
+```text
+Exec=slick-greeter
+```
+
+The preferred implementation direction is therefore to avoid overwriting `/usr/sbin/slick-greeter`; instead, stage the patched executable separately and select it through a separate greeter-session definition/config override if the final LightDM behavior permits it.
+
+---
+
+## Important binary-verification correction
+
+An earlier test searched the installed binary with `strings` for a source-code comment from the upstream fix. That was not a valid proof because source comments are normally discarded during compilation.
+
+Correct status:
+
+```text
+exact upstream 2.2.6 source lacks fix      CONFIRMED
+Mint 2.2.6+zena packaged source match      NOT YET PROVEN
+installed binary fix presence              NOT CONCLUSIVELY DETERMINED
+observed behavior matches old logic         YES
+```
 
 ---
 
@@ -256,9 +300,17 @@ Lock-screen fingerprint unlock            PASS
 Lock-screen password fallback             PASS
 Fresh-boot fingerprint authentication     PASS
 Reboot persistence                        PASS
-Fresh-boot auto-enter desktop              NOT YET
+Greeter source root cause                 CONFIRMED
+Exact upstream greeter fix                CONFIRMED
+2.2.6 clean cherry-pick                   PASS
+Patched greeter local configure           PASS
+Patched greeter local build               PASS
+Patched runtime dependency check           PASS
+Patched asset-prefix check                 PASS
+Stock greeter rollback hash recorded       PASS
+Fresh-boot auto-enter desktop              PENDING
 Suspend/resume                            PENDING
-Rollback documentation                    PENDING
+Final rollback documentation              PENDING
 ```
 
 ---
@@ -272,22 +324,20 @@ Rollback documentation                    PENDING
 PAM profile enabled through pam-auth-update
 ```
 
-Password authentication remains enabled.
+The greeter optimization path has not yet modified the active system greeter.
 
 ---
 
 ## Immediate next direction
 
-The fingerprint stack itself is now proven for daily system authentication.
+The fingerprint stack itself is proven for daily authentication.
 
-The next optional UX investigation is separate from core fingerprint support:
+The optional greeter path now has a locally built, source-verified, runtime-compatible candidate. Before activation, the next requirement is to design a reversible staging method that leaves Mint's stock `/usr/sbin/slick-greeter` untouched and can be rolled back from a TTY if the graphical greeter fails.
 
-> Determine whether Linux Mint's LightDM/greeter can automatically enter the desktop immediately after successful fingerprint authentication, removing the extra **Log In** click while preserving password fallback and login safety.
-
-After that, remaining reliability work is suspend/resume testing plus final cleanup/rollback documentation.
+After the greeter path is resolved or intentionally stopped, remaining reliability work is suspend/resume testing plus final cleanup/rollback documentation.
 
 ---
 
 ## Current project state in one sentence
 
-> **The HP EliteBook 840 G6 `06cb:00b7` fingerprint reader now works through Linux Mint's native authentication stack for fprintd verification, sudo, lock-screen unlock, and fresh-boot authentication, and the complete setup persists across reboot; the only observed cold-boot limitation is that Mint's LightDM greeter still requires clicking `Log In` after a successful fingerprint instead of entering the desktop automatically.**
+> **The HP EliteBook 840 G6 `06cb:00b7` fingerprint reader is fully working through Linux Mint's native authentication stack for fprintd, sudo, lock-screen unlock and fresh-boot authentication with password fallback and reboot persistence; the remaining optional UX work is a carefully staged upstream slick-greeter backport so successful boot-time fingerprint authentication can transition directly to the desktop without the final Enter key, while keeping the stock greeter untouched and rollback-safe.**
