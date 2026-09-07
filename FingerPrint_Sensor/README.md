@@ -4,7 +4,7 @@ This folder contains the complete working context for the built-in fingerprint r
 
 ## Current status
 
-The sensor itself is **solved and proven working natively under Linux**, and Phase 2 system integration is now well underway.
+The sensor itself is **solved and proven working natively under Linux**, and system-wide authentication is now working.
 
 Hardware:
 
@@ -36,14 +36,25 @@ native correct enrolled finger           MATCH
 native wrong finger                      NO MATCH
 fprintd loads staged MR !626 libfprint   PASS
 fprintd detects 06cb:00b7                PASS
-fprintd right-index enrollment           PASS
+fprintd enrollment                       PASS
 fprintd correct-finger verification      PASS
 fprintd wrong-finger rejection           PASS
 PAM fingerprint profile enabled          PASS
 sudo fingerprint authentication          PASS
+sudo password fallback                   PASS
+Cinnamon lock-screen fingerprint unlock  PASS
+lock-screen password fallback            PASS
+fresh-boot fingerprint authentication    PASS
+reboot persistence                       PASS
 ```
 
-So this is no longer a hardware-support investigation. The active work is now **finishing daily system authentication integration and reliability testing**.
+Current cold-boot workflow:
+
+```text
+touch fingerprint -> press Enter -> desktop
+```
+
+The remaining work is optional UX optimization: removing the final Enter/Log In confirmation in LightDM/slick-greeter without weakening fallback behavior or replacing Mint's stock greeter.
 
 ---
 
@@ -53,13 +64,19 @@ So this is no longer a hardware-support investigation. The active work is now **
 
 Start here when setting up the reader on a fresh Linux Mint install.
 
-It contains the refined, reproducible successful path. Phase 1 is complete and the proven part of Phase 2 is documented there as the integration advances.
+It contains the refined reproducible successful path and will become the final clean-install guide once the remaining reliability/cleanup work is finished.
 
 ### `Fingerprint_Reader_Path1_Progress.md`
 
 Detailed engineering/investigation log.
 
-Use this for troubleshooting, understanding why specific files/settings are required, and seeing the reasoning behind the current system integration.
+Use this for troubleshooting, exact proof milestones, greeter-backport work, and understanding why specific files/settings are required.
+
+### `Fingerprint_Login_Greeter_Optimization.md`
+
+Dedicated LightDM/slick-greeter UX investigation.
+
+It documents the extra Enter/Log In behavior, upstream root cause, exact upstream fix, clean backport to slick-greeter 2.2.6, and the reversible staging strategy under development.
 
 ### `permanent-data/validity/`
 
@@ -96,27 +113,61 @@ The native driver can enroll and verify fingerprints correctly.
 
 ### Phase 2 — Daily system integration
 
+**FUNCTIONALLY WORKING.**
+
+Proven:
+
+1. known-good libfprint is staged under `/usr/local/lib/fprintd-validity/` without replacing Mint's distro library;
+2. a systemd drop-in makes `/usr/libexec/fprintd` load the staged library;
+3. required Validity files are installed as real system files because `fprintd.service` uses `ProtectHome=true`;
+4. `fprintd-enroll` and correct/wrong `fprintd-verify` work;
+5. Mint's PAM fingerprint profile works with password fallback;
+6. `sudo` works with fingerprint and falls back to password after a failed fingerprint;
+7. Cinnamon lock-screen fingerprint unlock works with password fallback;
+8. fresh-boot fingerprint authentication works;
+9. the complete stack survives reboot.
+
+Still pending:
+
+1. suspend/resume reliability;
+2. final ownership/cleanup checks;
+3. complete rollback/uninstall documentation.
+
+### Optional greeter UX optimization
+
 **IN PROGRESS.**
 
-Already proven:
+Upstream slick-greeter commit:
 
-1. the known-good libfprint can be staged under `/usr/local/lib/fprintd-validity/` without replacing Mint's distro library;
-2. a systemd drop-in can make `/usr/libexec/fprintd` load that staged library;
-3. `fprintd-list` detects the Validity sensor;
-4. the Validity files must be real system files rather than symlinks into `/home` because `fprintd.service` uses `ProtectHome=true`;
-5. `fprintd-enroll` completes full right-index enrollment successfully;
-6. `fprintd-verify` accepts the enrolled right index and rejects a different finger;
-7. Mint's packaged `Fingerprint authentication` PAM profile can be enabled with `pam-auth-update` while keeping password authentication enabled;
-8. `sudo -k && sudo true` prompts for the right index finger and succeeds immediately after a correct touch.
+```text
+6902ed325ef358ed4cf3af0b7f04a0d078d18d4e
+Don't force authenticated user to press the Log In button
+```
 
-Still to prove:
+matches the observed fingerprint behavior.
 
-1. password fallback behavior after a failed fingerprint attempt;
-2. desktop login;
-3. lock-screen unlock;
-4. reboot persistence;
-5. suspend/resume reliability;
-6. clean rollback/uninstall path.
+The fix:
+
+```text
+cleanly cherry-picks onto exact upstream 2.2.6   PASS
+patched source verification                     PASS
+Meson configure                                 PASS
+local compilation                               PASS
+runtime library compatibility                   PASS
+no RPATH/RUNPATH                                PASS
+Mint /usr asset prefix rebuild                  PASS
+```
+
+The active system greeter has **not** been replaced.
+
+Stock rollback/reference anchor:
+
+```text
+/usr/sbin/slick-greeter
+SHA256: 583acf57cd2fdf15db0118649b03983f0ad24c4cbc9a6a8309610fe87667a1aa
+```
+
+The preferred direction is a separately staged patched greeter selected by a reversible LightDM configuration override rather than overwriting `/usr/sbin/slick-greeter`.
 
 ---
 
@@ -125,11 +176,11 @@ Still to prove:
 - Do not restart reverse engineering from zero. The sensor and native driver are proven.
 - Do not blindly use the newest upstream libfprint. The exact known-good commit is recorded above.
 - Do not regenerate Validity blobs if the preserved files are present and pass SHA-256 verification.
-- Do not run `ninja install` or overwrite Mint's system libfprint casually.
-- The currently proven integration method stages libfprint under `/usr/local/lib/fprintd-validity/` and uses a systemd override.
-- Do not use Validity symlinks that point into `/home/...` for `fprintd`; its service sandbox blocks them.
-- Keep password authentication enabled as fallback while testing login and lock-screen integration.
-- Keep all fingerprint-specific files inside this `FingerPrint_Sensor/` directory in the `Linux_Mint` repository.
+- Do not run `ninja install` or casually overwrite Mint's system libfprint or greeter.
+- Keep password authentication enabled as fallback.
+- Do not copy raw diagnostic logs containing TLS/session material into the repository.
+- Do not commit biometric template data such as `/var/lib/fprint` or `test-storage.variant`.
+- For greeter work, prefer a tiny reversible upstream-backed staging/config change; stop if it grows into custom greeter maintenance or fragile PAM hacks.
 
 ---
 
@@ -138,12 +189,12 @@ Still to prove:
 If this repository is handed to an AI assistant:
 
 1. Read this `README.md` for the current state.
-2. Read `Fingerprint_Reader_Setup_Guide.md` for the reproducible successful path.
-3. Read `Fingerprint_Reader_Path1_Progress.md` only when detailed debugging context is needed.
-4. Treat Phase 1 as solved.
-5. Treat `fprintd` enrollment and correct/wrong verification as solved.
-6. Treat PAM-backed `sudo` fingerprint authentication as proven working.
-7. Continue with password-fallback validation, then desktop login and lock-screen testing one step at a time.
-8. Treat the known-good libfprint commit and preserved Validity files as immutable fallback anchors.
+2. Read `Fingerprint_Reader_Setup_Guide.md` for the reproducible successful setup path.
+3. Read `Fingerprint_Reader_Path1_Progress.md` for detailed engineering history and current checkpoints.
+4. Read `Fingerprint_Login_Greeter_Optimization.md` before changing anything related to LightDM/slick-greeter.
+5. Treat native support, fprintd enrollment/verification, PAM, sudo, lock screen, password fallback and reboot persistence as solved.
+6. Treat the known-good libfprint commit and preserved Validity files as immutable fallback anchors.
+7. Do not overwrite the stock greeter during the current optimization path.
+8. Continue in small testable steps, with rollback designed before activation.
 
-The immediate engineering objective is to validate password fallback after a failed fingerprint attempt before moving on to graphical login and lock-screen authentication.
+The immediate engineering objective is to finish a reversible LightDM greeter staging plan, then test suspend/resume and complete final cleanup/rollback documentation.
