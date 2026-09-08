@@ -92,21 +92,6 @@ Type=Application
 X-Ubuntu-Gettext-Domain=slick-greeter
 ```
 
-A temporary custom override is now present for the isolated activation test:
-
-```text
-/etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf
-```
-
-with:
-
-```ini
-[Seat:*]
-greeter-session=slick-greeter-fingerprint
-```
-
-`lightdm --show-config` resolves this override as the effective configured greeter session, but the first reboot test showed that runtime greeter resolution still launched the stock binary. That discrepancy is now the active investigation target.
-
 ---
 
 ## Configuration-only path — CLOSED
@@ -290,8 +275,6 @@ Therefore the intended upstream runtime logic is definitely present in the local
 
 ## Build dependencies and configuration
 
-The source uses Meson and Vala/C.
-
 Observed dependencies include:
 
 ```text
@@ -314,27 +297,18 @@ libcanberra-dev
 liblightdm-gobject-1-dev
 ```
 
-The existing project environment provides:
-
-```text
-Meson 1.12.0
-Ninja 1.13.2
-```
+The project environment provided Meson `1.12.0` and Ninja `1.13.2`.
 
 ---
 
-## First local build — SUCCESS
+## Local build — SUCCESS
 
-Initial Meson configuration and build completed successfully.
-
-Compilation finished with warnings but no errors:
+Compilation completed successfully:
 
 ```text
 Compilation succeeded - 60 warning(s)
 [156/156] Linking target src/slick-greeter
 ```
-
-The warnings were mainly existing GTK deprecations and Vala nullability warnings.
 
 Produced executable:
 
@@ -342,53 +316,19 @@ Produced executable:
 ~/fingerprint-path1/slick-greeter-2.2.6/build/src/slick-greeter
 ```
 
-Observed size during the build:
-
-```text
-1.9M
-```
-
-No system greeter was modified.
+No system greeter was modified by the build.
 
 ---
 
 ## Runtime dependency comparison — PASS
 
-`ldd` was run against both:
+`ldd` was run against both the local patched build and `/usr/sbin/slick-greeter`.
 
-```text
-local patched build:
-~/fingerprint-path1/slick-greeter-2.2.6/build/src/slick-greeter
+Both resolve the same normal system runtime stack, including GTK3, GDK, Cairo, Canberra, LightDM GObject, X11, Pixman, GLib/GIO, Pango, ATK, and related libraries.
 
-Mint stock binary:
-/usr/sbin/slick-greeter
-```
+No required library is missing, and no runtime dependency is loaded from `~/fingerprint-path1` or `tools-venv`.
 
-Both resolve the same normal system runtime stack, including:
-
-```text
-libgtk-3.so.0
-libgdk-3.so.0
-libcairo.so.2
-libcanberra.so.0
-liblightdm-gobject-1.so.0
-libX11.so.6
-libpixman-1.so.0
-GLib / GIO / Pango / ATK and related dependencies
-```
-
-No required library is missing.
-
-No runtime dependency is being loaded from:
-
-```text
-~/fingerprint-path1
-tools-venv
-```
-
-This is an important compatibility signal.
-
-The fact that the build commands were run while the project virtual environment was active is therefore not the reason the reboot test behaved like stock slick-greeter. LightDM starts independently as a system service after reboot, and the staged executable has no runtime dependency on that venv.
+Therefore the fact that some build/staging commands were run while the Python virtual environment was active is not relevant to LightDM's boot-time execution. LightDM starts independently as a system service after reboot.
 
 ---
 
@@ -414,47 +354,22 @@ Therefore the patched greeter is not tied to the build directory or virtual envi
 
 ## Asset-path mismatch found and corrected
 
-The first successful build used Meson's default prefix and embedded paths such as:
+The first successful build used Meson's default prefix and embedded `/usr/local/share/slick-greeter` paths. Mint's packaged greeter assets live under `/usr/share/slick-greeter`, so that build was intentionally rejected for staging.
 
-```text
-/usr/local/share/slick-greeter
-```
-
-Mint's packaged greeter assets actually live under:
-
-```text
-/usr/share/slick-greeter
-```
-
-So the first build was intentionally rejected for staging.
-
-The build directory was recreated with:
+The tree was rebuilt with:
 
 ```bash
 meson setup build --prefix=/usr
+ninja -C build
 ```
 
-Meson confirmed:
-
-```text
-slick-greeter 2.2.6
-User defined options
-  prefix: /usr
-```
-
-After recompilation, embedded paths were checked again:
-
-```bash
-strings build/src/slick-greeter | grep -E '/usr/(local/)?share/slick-greeter'
-```
-
-All relevant paths now resolve to:
+After recompilation, embedded paths resolve to:
 
 ```text
 /usr/share/slick-greeter
 ```
 
-The incorrect `/usr/local/share/slick-greeter` paths are gone.
+with no `/usr/local/share/slick-greeter` paths remaining.
 
 Therefore:
 
@@ -464,9 +379,9 @@ Mint asset-layout compatibility -> PASS
 
 ---
 
-## Stock package layout
+## Stock package and rollback anchors
 
-`dpkg -L slick-greeter` confirms the Mint package owns:
+Mint's package owns:
 
 ```text
 /usr/sbin/slick-greeter
@@ -474,15 +389,7 @@ Mint asset-layout compatibility -> PASS
 /usr/share/xgreeters/slick-greeter.desktop
 ```
 
-The asset tree contains the greeter icons, backgrounds, session badges, and related resources.
-
-This reinforces the decision to reuse Mint's existing `/usr/share/slick-greeter` assets rather than installing a duplicate asset tree.
-
----
-
-## Stock binary rollback anchor
-
-Before any activation, the current Mint binary was recorded:
+Stock binary anchor:
 
 ```text
 -rwxr-xr-x 1 root root 424168 Jan 8 2026 /usr/sbin/slick-greeter
@@ -494,27 +401,27 @@ SHA-256:
 583acf57cd2fdf15db0118649b03983f0ad24c4cbc9a6a8309610fe87667a1aa  /usr/sbin/slick-greeter
 ```
 
-The exact installed package is also still available from the configured Mint repository:
+APT confirms the exact package is still available:
 
 ```text
 Installed: 2.2.6+zena
 Candidate: 2.2.6+zena
 ```
 
-This gives two recovery layers:
+Recovery layers:
 
 ```text
 remove custom LightDM override -> return to stock session selection
 sudo apt install --reinstall slick-greeter -> restore Mint-owned greeter files
 ```
 
-The stock binary has **not** been overwritten.
+The stock binary has not been overwritten.
 
 ---
 
 ## Isolated staging — COMPLETE
 
-The patched executable was staged separately as:
+The patched executable is staged separately as:
 
 ```text
 /usr/local/libexec/slick-greeter-fingerprint
@@ -543,7 +450,7 @@ Type=Application
 X-Ubuntu-Gettext-Domain=slick-greeter
 ```
 
-A small LightDM override was then created:
+The intended LightDM override is:
 
 ```text
 /etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf
@@ -556,114 +463,87 @@ with:
 greeter-session=slick-greeter-fingerprint
 ```
 
-Before reboot, `lightdm --show-config` reported:
+When this file existed before the first reboot attempt, `lightdm --show-config` correctly reported:
 
 ```text
 H  greeter-session=slick-greeter-fingerprint
 ```
 
-with source:
+from:
 
 ```text
 H  /etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf
 ```
 
-So the configuration parser recognized the custom selection correctly.
-
 ---
 
-## First reversible activation test — NEGATIVE, ROOT CAUSE NARROWED
+## First activation attempt — INVALID TEST, ROOT CAUSE FOUND
 
-After reboot, fingerprint login behavior was unchanged:
-
-```text
-touch fingerprint -> authentication succeeds -> Enter / Log In still required
-```
-
-At first this could have meant either:
+The first reboot appeared negative because the login flow remained:
 
 ```text
-patched binary ran but the backport did not change behavior
+touch fingerprint -> Enter / Log In -> desktop
 ```
 
-or:
-
-```text
-patched binary was never launched
-```
-
-The LightDM runtime log resolves that ambiguity.
-
-Current log entries repeatedly show:
+LightDM's boot log showed:
 
 ```text
 Session pid=...: Running command /usr/lib/lightdm/lightdm-greeter-session /usr/sbin/slick-greeter
 ```
 
-and not:
+and never showed the staged patched binary.
+
+A later inspection of the current boot's configuration loading sequence showed that LightDM loaded:
 
 ```text
-/usr/local/libexec/slick-greeter-fingerprint
+/usr/share/lightdm/lightdm.conf.d/90-slick-greeter.conf
+/etc/lightdm/lightdm.conf.d/70-linuxmint.conf
+/etc/lightdm/lightdm.conf
 ```
 
-Therefore the first login test **did not test the patched greeter at all**.
-
-Current conclusion:
+but did **not** load:
 
 ```text
-patched binary behavior at login             NOT YET TESTED
-custom greeter config visible to show-config YES
-actual runtime greeter launched              STOCK /usr/sbin/slick-greeter
-unchanged fingerprint behavior               EXPECTED under stock greeter
+/etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf
 ```
 
-The long LightDM log also shows the normal sequence:
+The decisive check then returned:
 
 ```text
-Loading configuration from /usr/share/lightdm/lightdm.conf.d/50-greeter-wrapper.conf
-Loading configuration from /usr/share/lightdm/lightdm.conf.d/90-slick-greeter.conf
-Seat seat0: Creating greeter session
-Session ...: Started with service 'lightdm-greeter', username 'lightdm'
-Session ...: Running command /usr/lib/lightdm/lightdm-greeter-session /usr/sbin/slick-greeter
+ls: cannot access '/etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf': No such file or directory
 ```
 
-No runtime line in the inspected output shows `slick-greeter-fingerprint` being selected or launched.
+Therefore the apparent LightDM "show-config vs runtime" discrepancy was not a greeter-session resolution bug. The override file was simply absent by the time LightDM booted.
 
-This changes the investigation direction: the next problem is **LightDM greeter-session resolution at runtime**, not the upstream fingerprint patch itself.
+This means:
+
+```text
+patched binary at boot                      NOT YET TESTED
+LightDM runtime greeter-session resolution  NOT YET SUSPECT
+first reboot result                         INVALID AS PATCH TEST
+stock greeter launch                        EXPECTED because override absent
+```
+
+The override had definitely existed immediately before the activation sequence because `lightdm --show-config` had reported it. Its later absence explains the entire first reboot result. The exact reason it disappeared is not yet treated as a system bug; one likely sequencing hazard is accidentally executing the documented rollback command before reboot. Future instructions must clearly separate commands to run now from rollback commands that are for emergency use only.
 
 ---
 
-## Current investigation direction
+## Correct next direction
 
-Do not modify the patch or PAM yet.
+Do not modify the patch, PAM, LightDM package, or xgreeter session logic.
 
-The next checks should determine why:
-
-```text
-lightdm --show-config
-```
-
-reports:
+The next activation attempt should:
 
 ```text
-greeter-session=slick-greeter-fingerprint
+1. recreate /etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf
+2. verify the file exists and has the expected contents
+3. verify lightdm --show-config selects slick-greeter-fingerprint
+4. reboot without executing the rollback command
+5. verify the runtime log launches /usr/local/libexec/slick-greeter-fingerprint
+6. only then judge fingerprint auto-login behavior
 ```
 
-while the boot-time LightDM runtime still executes:
-
-```text
-/usr/sbin/slick-greeter
-```
-
-The immediate diagnostic target is the current boot's LightDM session-resolution path, ideally using current-boot-only service logs and then checking how this LightDM build maps `greeter-session=` names to files under `/usr/share/xgreeters`.
-
-Only after the runtime log explicitly shows:
-
-```text
-/usr/local/libexec/slick-greeter-fingerprint
-```
-
-will the fingerprint auto-login behavior be considered a valid test of the patched greeter.
+This is now the shortest and lowest-risk way forward.
 
 ---
 
@@ -693,10 +573,9 @@ Stock binary SHA-256                        RECORDED
 APT exact-package rollback                  AVAILABLE
 Patched binary staged                       PASS
 Custom xgreeter entry                       CREATED
-Custom LightDM override                     CREATED
-show-config sees custom greeter             PASS
-boot-time runtime uses custom binary        FAIL / NOT YET
-Patched greeter login behavior              NOT YET TESTED
+Custom LightDM override                     CURRENTLY ABSENT
+First reboot tested patched binary          NO
+First reboot patch result                   INVALID / NOT A PATCH TEST
 Automatic fingerprint -> desktop login      PENDING
 ```
 
@@ -708,8 +587,9 @@ Automatic fingerprint -> desktop login      PENDING
 - Do not overwrite `/usr/sbin/slick-greeter`.
 - Do not remove the stock xgreeter desktop entry.
 - Do not change PAM for this greeter optimization.
-- Keep the current isolated staged binary and tiny override model.
+- Keep the isolated staged binary and tiny override model.
 - Rollback must remain possible from a TTY even if the graphical greeter fails.
+- Do not execute the rollback command during normal activation testing.
 - Test both fingerprint and password paths only after logs prove the custom binary actually launched.
 - If the maintenance cost becomes disproportionate to removing one Enter press, stop and keep the current working flow.
 
@@ -751,4 +631,4 @@ The final setup guide should eventually include this upgrade workflow so a local
 
 ## Current path in one sentence
 
-> The exact upstream fingerprint-login fix cleanly backports onto slick-greeter 2.2.6, the patched binary is built, verified, and staged safely beside the stock Mint greeter, but the first reboot test still launched `/usr/sbin/slick-greeter` despite `lightdm --show-config` resolving the custom session; therefore the patch itself has not yet been tested at login, and the next task is to resolve LightDM's boot-time greeter-session selection while keeping rollback intact.
+> The exact upstream fingerprint-login fix cleanly backports onto slick-greeter 2.2.6 and the patched binary is safely staged beside Mint's stock greeter; the first reboot never tested it because the LightDM override file was absent at boot, so the next step is simply to recreate and verify that override, reboot without invoking rollback, prove the custom binary actually launched, and only then evaluate whether fingerprint authentication goes directly to the desktop.
