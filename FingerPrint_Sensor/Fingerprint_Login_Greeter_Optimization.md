@@ -9,29 +9,41 @@
 
 ---
 
-## Why this path exists
+## Final result — SUCCESS
 
-The fingerprint reader already works through the native Linux authentication stack for `fprintd`, PAM, `sudo`, Cinnamon lock-screen unlock, and fresh-boot authentication.
+The login-screen optimization is now working.
 
-The remaining UX issue is limited to the LightDM login greeter:
+Before the patch:
 
 ```text
 touch fingerprint -> authentication succeeds -> press Enter / click Log In -> desktop
 ```
 
-Desired behavior:
+After the patched greeter was actually selected by LightDM:
 
 ```text
 touch fingerprint -> desktop
 ```
 
-Because the current flow already works, this optimization is only worth keeping if it stays small, reversible, and close to upstream behavior.
+No Enter key and no Log In click are required.
+
+The stock Mint greeter binary remains untouched.
 
 ---
 
-## Decision rule
+## Why this path existed
 
-Proceed only with one of:
+The fingerprint reader itself already worked through the native Linux authentication stack for `fprintd`, PAM, `sudo`, Cinnamon lock-screen unlock, fresh-boot authentication, password fallback, and reboot persistence.
+
+The remaining problem was only the LightDM/slick-greeter UX at fresh boot. Fingerprint authentication succeeded, but slick-greeter still required a final confirmation action.
+
+Because the original flow was already usable, this optimization was only accepted if it could remain small, reversible, and closely aligned with upstream behavior.
+
+---
+
+## Decision rule used
+
+Allowed:
 
 ```text
 supported configuration change
@@ -39,7 +51,7 @@ small reversible slick-greeter change
 small upstream-backed patch
 ```
 
-Stop if the solution requires:
+Rejected:
 
 ```text
 replacing LightDM
@@ -48,6 +60,8 @@ fragile PAM hacks
 large custom greeter maintenance
 blindly overwriting packaged system files
 ```
+
+The final solution satisfies this rule.
 
 ---
 
@@ -61,18 +75,10 @@ lightdm-settings 2.1.1
 slick-greeter    2.2.6+zena
 ```
 
-Mint's normal greeter configuration comes from:
+Mint's stock greeter configuration comes from:
 
 ```text
 /usr/share/lightdm/lightdm.conf.d/90-slick-greeter.conf
-```
-
-and normally selects:
-
-```text
-[Seat:*]
-greeter-session=slick-greeter
-user-session=cinnamon
 ```
 
 The stock greeter session definition is:
@@ -81,15 +87,10 @@ The stock greeter session definition is:
 /usr/share/xgreeters/slick-greeter.desktop
 ```
 
-with:
+and normally launches:
 
-```ini
-[Desktop Entry]
-Name=Slick Greeter
-Comment=Slick Greeter
-Exec=slick-greeter
-Type=Application
-X-Ubuntu-Gettext-Domain=slick-greeter
+```text
+/usr/sbin/slick-greeter
 ```
 
 ---
@@ -102,9 +103,7 @@ The installed schema:
 /usr/share/glib-2.0/schemas/x.dm.slick-greeter.gschema.xml
 ```
 
-contains visual and UI settings such as backgrounds, themes, icons, fonts, HiDPI, keyboard, accessibility, clock, and monitor placement.
-
-It contains no option for:
+contains appearance and UI settings, but no option for:
 
 ```text
 fingerprint auto-submit
@@ -125,7 +124,13 @@ config-only fix -> NOT AVAILABLE
 
 Upstream slick-greeter contains a fix for this exact behavior.
 
-Commit:
+Repository:
+
+```text
+https://github.com/linuxmint/slick-greeter
+```
+
+Relevant commit:
 
 ```text
 6902ed325ef358ed4cf3af0b7f04a0d078d18d4e
@@ -143,22 +148,28 @@ Date:
 2026-07-01
 ```
 
-The old greeter logic relied on whether PAM had produced a normal prompt. `pam_fprintd` can instead present an informational PAM message, so fingerprint authentication may complete successfully even though slick-greeter does not consider a prompt to have happened. The greeter then stays authenticated but waits for Enter / Log In.
+The old greeter logic relied on whether PAM had produced a normal prompt. `pam_fprintd` can instead present an informational PAM message. Fingerprint authentication could therefore complete successfully while slick-greeter still believed no suitable prompt interaction had occurred, leaving the user authenticated but waiting for Enter / Log In.
 
-This exactly matches the observed behavior on Linux Mint 22.3.
+That matched the observed Linux Mint 22.3 behavior exactly.
 
 ---
 
-## Exact upstream 2.2.6 baseline
+## Exact 2.2.6 baseline
 
-The upstream repository exposes tag `2.2.6`:
+The exact upstream tag used was:
+
+```text
+2.2.6
+```
+
+Tag objects:
 
 ```text
 refs/tags/2.2.6      -> 04cf4987ac32ab8656c49787b08b8a5fa1cde78d
 refs/tags/2.2.6^{}   -> d1f81b4406d5a756d2274c3dbbbd39bd1bd0f6d4
 ```
 
-That source contains the old logic:
+The exact `2.2.6` source contains the old logic:
 
 ```vala
 protected bool prompted = false;
@@ -170,51 +181,25 @@ and:
 if (prompted && !unacknowledged_messages)
 ```
 
-The old message callback also marks PAM messages as unacknowledged.
-
-Therefore the source-level cause is confirmed for upstream `2.2.6`.
-
----
-
-## Important correction about the installed Mint binary
-
-An earlier check used:
-
-```bash
-strings /usr/sbin/slick-greeter | grep -F "Login immediately if PAM interacted"
-```
-
-and produced no output.
-
-That phrase is a source-code comment, so its absence from a compiled binary is not evidence that the fix is absent.
-
-Correct status:
-
-```text
-exact upstream 2.2.6 source lacks fix       CONFIRMED
-Mint 2.2.6+zena exact packaged source       NOT YET PROVEN
-installed binary fix membership             NOT CONCLUSIVELY DETERMINED
-```
-
-The observed Mint behavior remains consistent with the old logic, but the comment-string test is not used as proof.
+The upstream fix replaces this prompt-only concept with `auth_interaction_seen` and treats valid non-error PAM interaction as sufficient for automatic session start after successful authentication.
 
 ---
 
 ## Local patch workspace
 
-Workspace:
+Workspace used:
 
 ```text
 ~/fingerprint-path1/slick-greeter-2.2.6
 ```
 
-Baseline commit:
+The exact source was cloned with:
 
-```text
-d1f81b4406d5a756d2274c3dbbbd39bd1bd0f6d4
+```bash
+git clone --branch 2.2.6 --depth 1 https://github.com/linuxmint/slick-greeter.git slick-greeter-2.2.6
 ```
 
-Because the clone was shallow and pinned to the exact tag, the newer fix commit was fetched explicitly:
+Because the clone was shallow, the newer fix commit was fetched explicitly:
 
 ```bash
 git fetch origin 6902ed325ef358ed4cf3af0b7f04a0d078d18d4e
@@ -233,19 +218,13 @@ Result:
 3 files changed, 52 insertions(+), 10 deletions(-)
 ```
 
-Most importantly:
-
-```text
-merge conflicts -> NONE
-```
+There were no merge conflicts.
 
 Local patched commit:
 
 ```text
 75d95a9
 ```
-
-This is strong evidence that the upstream fix is structurally compatible with exact `2.2.6`.
 
 ---
 
@@ -257,7 +236,7 @@ The patched source was checked directly:
 grep -n "auth_interaction_seen" src/greeter-list.vala
 ```
 
-Observed lines:
+Observed lines included:
 
 ```text
 790:    protected bool auth_interaction_seen = false;
@@ -269,27 +248,15 @@ Observed lines:
 902:        auth_interaction_seen = false;
 ```
 
-Therefore the intended upstream runtime logic is definitely present in the local patched source.
+Therefore the intended upstream runtime logic was definitely present in the local patched source.
 
 ---
 
-## Build dependencies and configuration
+## Build dependencies
 
-Observed dependencies include:
+The build used Meson/Ninja and required the normal slick-greeter development dependencies.
 
-```text
-cairo
-gdk-x11-3.0
-gio-2.0
-gio-unix-2.0
-gtk+-3.0 >= 3.20.0
-libcanberra
-liblightdm-gobject-1 >= 1.12.0
-pixman-1
-x11
-```
-
-Additional development packages required during this experiment:
+Relevant packages installed during the experiment included:
 
 ```text
 valac
@@ -297,13 +264,42 @@ libcanberra-dev
 liblightdm-gobject-1-dev
 ```
 
-The project environment provided Meson `1.12.0` and Ninja `1.13.2`.
+The build also uses development headers for GTK3, GLib/GIO, Cairo, X11, Pixman and related components.
+
+The project-local environment provided:
+
+```text
+Meson 1.12.0
+Ninja 1.13.2
+```
 
 ---
 
-## Local build — SUCCESS
+## Build — SUCCESS
 
-Compilation completed successfully:
+The first build succeeded but used Meson's default `/usr/local` prefix. That embedded asset paths under:
+
+```text
+/usr/local/share/slick-greeter
+```
+
+Mint's packaged assets live under:
+
+```text
+/usr/share/slick-greeter
+```
+
+so that build was intentionally rejected.
+
+The tree was rebuilt with the correct prefix:
+
+```bash
+rm -rf build
+meson setup build --prefix=/usr
+ninja -C build
+```
+
+Result:
 
 ```text
 Compilation succeeded - 60 warning(s)
@@ -316,54 +312,7 @@ Produced executable:
 ~/fingerprint-path1/slick-greeter-2.2.6/build/src/slick-greeter
 ```
 
-No system greeter was modified by the build.
-
----
-
-## Runtime dependency comparison — PASS
-
-`ldd` was run against both the local patched build and `/usr/sbin/slick-greeter`.
-
-Both resolve the same normal system runtime stack, including GTK3, GDK, Cairo, Canberra, LightDM GObject, X11, Pixman, GLib/GIO, Pango, ATK, and related libraries.
-
-No required library is missing, and no runtime dependency is loaded from `~/fingerprint-path1` or `tools-venv`.
-
-Therefore the fact that some build/staging commands were run while the Python virtual environment was active is not relevant to LightDM's boot-time execution. LightDM starts independently as a system service after reboot.
-
----
-
-## ELF path inspection — PASS
-
-The patched binary was inspected with:
-
-```bash
-readelf -d build/src/slick-greeter | grep -E 'RPATH|RUNPATH|NEEDED'
-```
-
-Result:
-
-```text
-NEEDED entries present normally
-RPATH   absent
-RUNPATH absent
-```
-
-Therefore the patched greeter is not tied to the build directory or virtual environment at runtime.
-
----
-
-## Asset-path mismatch found and corrected
-
-The first successful build used Meson's default prefix and embedded `/usr/local/share/slick-greeter` paths. Mint's packaged greeter assets live under `/usr/share/slick-greeter`, so that build was intentionally rejected for staging.
-
-The tree was rebuilt with:
-
-```bash
-meson setup build --prefix=/usr
-ninja -C build
-```
-
-After recompilation, embedded paths resolve to:
+Embedded asset paths were then verified to point to:
 
 ```text
 /usr/share/slick-greeter
@@ -371,25 +320,39 @@ After recompilation, embedded paths resolve to:
 
 with no `/usr/local/share/slick-greeter` paths remaining.
 
-Therefore:
+---
+
+## Runtime compatibility checks — PASS
+
+`ldd` comparison between the patched build and stock `/usr/sbin/slick-greeter` showed the same normal system runtime stack.
+
+No library was missing and no runtime dependency came from:
 
 ```text
-Mint asset-layout compatibility -> PASS
+~/fingerprint-path1
+tools-venv
 ```
+
+`readelf` also showed:
+
+```text
+RPATH   absent
+RUNPATH absent
+```
+
+Therefore the patched binary is not tied to the build workspace or Python virtual environment.
 
 ---
 
-## Stock package and rollback anchors
+## Stock rollback anchors
 
-Mint's package owns:
+Stock binary:
 
 ```text
 /usr/sbin/slick-greeter
-/usr/share/slick-greeter/...
-/usr/share/xgreeters/slick-greeter.desktop
 ```
 
-Stock binary anchor:
+Recorded stock state:
 
 ```text
 -rwxr-xr-x 1 root root 424168 Jan 8 2026 /usr/sbin/slick-greeter
@@ -401,45 +364,44 @@ SHA-256:
 583acf57cd2fdf15db0118649b03983f0ad24c4cbc9a6a8309610fe87667a1aa  /usr/sbin/slick-greeter
 ```
 
-APT confirms the exact package is still available:
+APT also confirmed the exact Mint package remained available:
 
 ```text
 Installed: 2.2.6+zena
 Candidate: 2.2.6+zena
 ```
 
-Recovery layers:
+This provides a second recovery layer:
 
-```text
-remove custom LightDM override -> return to stock session selection
-sudo apt install --reinstall slick-greeter -> restore Mint-owned greeter files
+```bash
+sudo apt install --reinstall slick-greeter
 ```
 
-The stock binary has not been overwritten.
+The stock binary was never overwritten by this project.
 
 ---
 
-## Isolated staging — COMPLETE
+## Final isolated installation layout
 
-The patched executable is staged separately as:
+Patched executable:
 
 ```text
 /usr/local/libexec/slick-greeter-fingerprint
 ```
 
-Observed ownership and mode:
+Observed ownership/mode:
 
 ```text
 -rwxr-xr-x root root /usr/local/libexec/slick-greeter-fingerprint
 ```
 
-A separate greeter session entry was created:
+Custom greeter session definition:
 
 ```text
 /usr/share/xgreeters/slick-greeter-fingerprint.desktop
 ```
 
-with:
+Contents:
 
 ```ini
 [Desktop Entry]
@@ -450,20 +412,20 @@ Type=Application
 X-Ubuntu-Gettext-Domain=slick-greeter
 ```
 
-The intended LightDM override is:
+LightDM override:
 
 ```text
 /etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf
 ```
 
-with:
+Contents:
 
 ```ini
 [Seat:*]
 greeter-session=slick-greeter-fingerprint
 ```
 
-When this file existed before the first reboot attempt, `lightdm --show-config` correctly reported:
+`lightdm --show-config` correctly resolved:
 
 ```text
 H  greeter-session=slick-greeter-fingerprint
@@ -477,158 +439,183 @@ H  /etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf
 
 ---
 
-## First activation attempt — INVALID TEST, ROOT CAUSE FOUND
+## Important failed first activation — procedural error, not patch failure
 
-The first reboot appeared negative because the login flow remained:
+The first reboot appeared negative because the login flow remained unchanged.
 
-```text
-touch fingerprint -> Enter / Log In -> desktop
-```
-
-LightDM's boot log showed:
+LightDM logs showed it still launched:
 
 ```text
-Session pid=...: Running command /usr/lib/lightdm/lightdm-greeter-session /usr/sbin/slick-greeter
+/usr/sbin/slick-greeter
 ```
 
-and never showed the staged patched binary.
-
-A later inspection of the current boot's configuration loading sequence showed that LightDM loaded:
-
-```text
-/usr/share/lightdm/lightdm.conf.d/90-slick-greeter.conf
-/etc/lightdm/lightdm.conf.d/70-linuxmint.conf
-/etc/lightdm/lightdm.conf
-```
-
-but did **not** load:
+Later inspection found:
 
 ```text
 /etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf
 ```
 
-The decisive check then returned:
+was absent at boot.
+
+The cause was procedural: the rollback command that removes the override had been placed immediately before the reboot instructions and was executed as part of the sequence.
+
+Therefore the first reboot was not a valid test of the patched greeter.
+
+This is an important documentation lesson:
 
 ```text
-ls: cannot access '/etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf': No such file or directory
-```
-
-Therefore the apparent LightDM "show-config vs runtime" discrepancy was not a greeter-session resolution bug. The override file was simply absent by the time LightDM booted.
-
-This means:
-
-```text
-patched binary at boot                      NOT YET TESTED
-LightDM runtime greeter-session resolution  NOT YET SUSPECT
-first reboot result                         INVALID AS PATCH TEST
-stock greeter launch                        EXPECTED because override absent
-```
-
-The override had definitely existed immediately before the activation sequence because `lightdm --show-config` had reported it. Its later absence explains the entire first reboot result. The exact reason it disappeared is not yet treated as a system bug; one likely sequencing hazard is accidentally executing the documented rollback command before reboot. Future instructions must clearly separate commands to run now from rollback commands that are for emergency use only.
-
----
-
-## Correct next direction
-
-Do not modify the patch, PAM, LightDM package, or xgreeter session logic.
-
-The next activation attempt should:
-
-```text
-1. recreate /etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf
-2. verify the file exists and has the expected contents
-3. verify lightdm --show-config selects slick-greeter-fingerprint
-4. reboot without executing the rollback command
-5. verify the runtime log launches /usr/local/libexec/slick-greeter-fingerprint
-6. only then judge fingerprint auto-login behavior
-```
-
-This is now the shortest and lowest-risk way forward.
-
----
-
-## Current assessment
-
-```text
-Observed extra Enter/click requirement      CONFIRMED
-Active stock greeter                        slick-greeter 2.2.6+zena
-Config-only option                          NOT AVAILABLE
-Exact upstream fix                          IDENTIFIED
-Upstream fix commit                         6902ed325ef358ed4cf3af0b7f04a0d078d18d4e
-Exact upstream 2.2.6 baseline               CONFIRMED
-2.2.6 baseline commit                       d1f81b4406d5a756d2274c3dbbbd39bd1bd0f6d4
-Source-level old behavior                   CONFIRMED
-Installed Mint packaged source match        NOT YET PROVEN
-Clean backport onto 2.2.6                   PASS
-Patched local commit                        75d95a9
-Patched source logic present                PASS
-Meson configure                             PASS
-Local compile                               PASS
-Runtime library resolution                  PASS
-Missing shared libraries                    NONE
-RPATH / RUNPATH                             NONE
-Mint asset prefix                           PASS
-Stock greeter preserved                     YES
-Stock binary SHA-256                        RECORDED
-APT exact-package rollback                  AVAILABLE
-Patched binary staged                       PASS
-Custom xgreeter entry                       CREATED
-Custom LightDM override                     CURRENTLY ABSENT
-First reboot tested patched binary          NO
-First reboot patch result                   INVALID / NOT A PATCH TEST
-Automatic fingerprint -> desktop login      PENDING
+normal activation commands and emergency rollback commands must never be presented as one continuous execution sequence
 ```
 
 ---
 
-## Safety rules for the remaining work
+## Correct activation — SUCCESS
 
-- Do not run `ninja install`.
-- Do not overwrite `/usr/sbin/slick-greeter`.
-- Do not remove the stock xgreeter desktop entry.
-- Do not change PAM for this greeter optimization.
-- Keep the isolated staged binary and tiny override model.
-- Rollback must remain possible from a TTY even if the graphical greeter fails.
-- Do not execute the rollback command during normal activation testing.
-- Test both fingerprint and password paths only after logs prove the custom binary actually launched.
-- If the maintenance cost becomes disproportionate to removing one Enter press, stop and keep the current working flow.
+The override was recreated:
 
----
-
-## Required tests after verified custom-binary activation
-
-Once the runtime log proves the staged greeter actually launched, test in this order:
-
-```text
-1. greeter starts normally
-2. runtime log shows /usr/local/libexec/slick-greeter-fingerprint
-3. correct fingerprint -> desktop automatically
-4. wrong fingerprint -> normal failure / password fallback
-5. normal password login still works
-6. reboot persistence
-7. rollback to stock greeter
+```ini
+[Seat:*]
+greeter-session=slick-greeter-fingerprint
 ```
 
-Only keep the optimization if all tests pass.
+Then `lightdm --show-config` was checked again and confirmed the custom greeter selection.
+
+The machine was rebooted without removing the override.
+
+Result:
+
+```text
+touch fingerprint -> desktop
+```
+
+No Enter key was required.
+No Log In click was required.
+
+This proves the upstream backport works correctly on this Linux Mint 22.3 / slick-greeter 2.2.6 setup when the patched greeter is actually selected.
 
 ---
 
-## Future Linux Mint major-upgrade workflow — RESERVED
+## Final status matrix
+
+```text
+Fingerprint authentication itself             PASS
+Fresh-boot authentication persistence          PASS
+LightDM fingerprint authentication             PASS
+Exact upstream root cause                      CONFIRMED
+Exact upstream fix                             CONFIRMED
+Fix cherry-picks onto 2.2.6                    PASS
+Patched source logic                           PASS
+Local build                                    PASS
+Runtime dependency compatibility               PASS
+No RPATH/RUNPATH                               PASS
+Mint asset prefix                              PASS
+Stock greeter preserved                        PASS
+APT rollback package                           AVAILABLE
+Patched binary staged separately               PASS
+Custom xgreeter session                        PASS
+Custom LightDM override                        PASS
+LightDM launches patched greeter                PASS by observed behavior
+Fingerprint -> desktop with no Enter/click     PASS
+```
+
+The primary optimization objective is complete.
+
+---
+
+## Remaining validation worth doing
+
+Although the target behavior is now proven, the isolated greeter should still be exercised through the remaining ordinary login paths before this setup is considered completely frozen:
+
+```text
+wrong fingerprint -> password fallback
+normal password login
+another reboot -> fingerprint direct-to-desktop remains working
+TTY rollback -> stock greeter returns normally
+```
+
+These are validation/rollback tests, not blockers for the confirmed primary behavior.
+
+---
+
+## Rollback
+
+Emergency rollback should be treated as a separate procedure, not as part of normal setup.
+
+From a TTY if necessary, remove only the custom selection override:
+
+```bash
+sudo rm /etc/lightdm/lightdm.conf.d/99-fingerprint-greeter.conf
+```
+
+Then reboot:
+
+```bash
+sudo reboot
+```
+
+LightDM will return to Mint's stock `slick-greeter` session.
+
+Optional cleanup after rollback:
+
+```bash
+sudo rm /usr/share/xgreeters/slick-greeter-fingerprint.desktop
+sudo rm /usr/local/libexec/slick-greeter-fingerprint
+```
+
+If Mint-owned greeter files ever need restoration:
+
+```bash
+sudo apt install --reinstall slick-greeter
+```
+
+---
+
+## What must be preserved in this repository
+
+Unlike the Validity fingerprint-driver path, this greeter optimization does not depend on private hardware blobs or generated calibration data.
+
+The important reproducibility anchors are public and immutable enough for normal reconstruction:
+
+```text
+upstream repository: https://github.com/linuxmint/slick-greeter
+baseline tag:         2.2.6
+baseline commit:      d1f81b4406d5a756d2274c3dbbbd39bd1bd0f6d4
+fix commit:           6902ed325ef358ed4cf3af0b7f04a0d078d18d4e
+```
+
+Therefore no compiled greeter binary needs to be committed to this repository.
+
+The guide plus the exact upstream tag/commit hashes are sufficient to rebuild the patched executable reproducibly on a fresh installation.
+
+Do not commit:
+
+```text
+/usr/sbin/slick-greeter binary copies
+locally built ELF binaries
+entire upstream source clone
+```
+
+A local patch file could be archived as an optional convenience, but it is not required because the exact upstream fix commit is already recorded.
+
+---
+
+## Future Linux Mint major-upgrade workflow
 
 After a future Mint upgrade, especially beyond Zena:
 
 ```text
-check installed slick-greeter version
-check whether Mint now ships the upstream fix
-verify actual fingerprint login behavior
-remove the local patched greeter if distro behavior is fixed
-only rebuild/reapply if the fix is still absent and compatibility is confirmed
+1. check installed slick-greeter version
+2. test fingerprint login before applying any custom greeter
+3. check whether Mint now includes upstream commit 6902ed3 or equivalent behavior
+4. if fingerprint already opens the desktop directly, remove/avoid the local patched greeter
+5. only rebuild/reapply if the distro still lacks the behavior and compatibility is confirmed
+6. re-test fingerprint and password fallback after the upgrade
 ```
 
-The final setup guide should eventually include this upgrade workflow so a local workaround is never carried forward unnecessarily.
+The custom greeter should never be carried forward automatically once Mint ships the upstream behavior itself.
 
 ---
 
-## Current path in one sentence
+## Final path in one sentence
 
-> The exact upstream fingerprint-login fix cleanly backports onto slick-greeter 2.2.6 and the patched binary is safely staged beside Mint's stock greeter; the first reboot never tested it because the LightDM override file was absent at boot, so the next step is simply to recreate and verify that override, reboot without invoking rollback, prove the custom binary actually launched, and only then evaluate whether fingerprint authentication goes directly to the desktop.
+> On Linux Mint 22.3 Zena with slick-greeter 2.2.6, upstream commit `6902ed325ef358ed4cf3af0b7f04a0d078d18d4e` cleanly backports onto the exact `2.2.6` source, builds against Mint's existing runtime and asset layout, can be staged beside the untouched stock greeter, and successfully changes fresh-boot login from `touch fingerprint -> Enter/click -> desktop` to `touch fingerprint -> desktop`.
