@@ -5665,6 +5665,633 @@ The Inspector had learned to judge streams.
 
 Now it had to learn what else belonged to the playback.
 
+
 ---
 
-*Next: Chapter 11 — More Than Video*
+# Chapter 11 — More Than Video
+
+By this point, something subtle had changed.
+
+The baseline extension was still useful.
+
+I still compared against it.
+
+It could detect streams.
+
+It could expose browser request context.
+
+It had helped me prove that the problem I was attacking was real and solvable.
+
+But Stream Inspector was no longer simply trying to catch up.
+
+It was beginning to think differently.
+
+That was the moment the project stopped being only an imitation of an existing capability.
+
+It started becoming my contribution.
+
+## Baseline Is Where You Start, Not Where You Stop
+
+Research had already taught me what a baseline was for.
+
+A baseline tells you what the current reference point can do.
+
+It gives you something concrete to compare against.
+
+But if your final system only reproduces the baseline exactly, then you have built a copy.
+
+Useful, perhaps.
+
+Educational, certainly.
+
+But not novel.
+
+In research, novelty matters.
+
+What did your method add?
+
+What does it explain better?
+
+What does it solve that the baseline does not?
+
+Why should this work exist?
+
+Those questions had belonged to my Master's research world.
+
+Now they entered Stream Inspector.
+
+The baseline extension could detect useful media.
+
+Good.
+
+So could mine.
+
+The baseline could expose headers like User-Agent and Referer.
+
+Good.
+
+Mine was reaching that point too.
+
+But Stream Inspector had started adding something else:
+
+judgment.
+
+Ranking.
+
+Explainable evidence.
+
+Separation between detection and usefulness.
+
+Keeping alternatives instead of throwing them away.
+
+Preserving exact signed requests while using other paths only as evidence.
+
+That was not just catching up anymore.
+
+That was architecture with an opinion.
+
+## Novelty Does Not Have to Be Huge
+
+At first, I think I had imagined novelty as something dramatic.
+
+A completely new algorithm.
+
+A revolutionary technique.
+
+Some giant leap nobody had attempted before.
+
+Research gradually taught me a more practical truth.
+
+Novelty can be small and still matter.
+
+Sometimes the contribution is not:
+
+*I invented stream detection.*
+
+It is:
+
+*I changed what the system does with detected streams.*
+
+The baseline says:
+
+**Here are the URLs.**
+
+My extension was beginning to say:
+
+**Here are the URLs, but this one is probably more useful, here is why, here are the alternatives, and I am not deleting them just because I prefer one.**
+
+That difference sounds modest.
+
+In real use, it was enormous.
+
+A developer looking at a console full of media requests no longer had to treat every line equally.
+
+The extension was beginning to reduce cognitive load.
+
+That was my contribution.
+
+Not replacing the baseline.
+
+Learning from it, then moving beyond it.
+
+## The Subtitle Trap
+
+The next place where that intelligence mattered was timed text.
+
+Subtitles looked easy at first.
+
+A URL ended in `.vtt`.
+
+Subtitle.
+
+A URL ended in `.srt`.
+
+Subtitle.
+
+A URL ended in `.ass`.
+
+Subtitle.
+
+Done.
+
+Then real websites ruined the simplicity.
+
+Some `.vtt` files were not subtitles at all.
+
+They were thumbnail timelines.
+
+Storyboards.
+
+Preview cues.
+
+The browser used them to show little images when the user hovered across the video timeline.
+
+Technically, they were timed text.
+
+Semantically, they had nothing to do with dialogue.
+
+If Stream Inspector simply listed every VTT file under "Subtitles," the extension would be correct at the file-format level and wrong at the user level.
+
+That was becoming a familiar pattern.
+
+The browser gives you evidence.
+
+The engineering challenge is deciding what the evidence *means*.
+
+## Role Matters More Than Extension
+
+So subtitle detection gained another layer.
+
+Not just:
+
+**What format is this?**
+
+But:
+
+**What role does this resource appear to play?**
+
+A timed-text candidate could become:
+
+**SUBTITLE**
+
+**THUMBNAIL / STORYBOARD**
+
+or
+
+**UNKNOWN TIMED TEXT**
+
+Again, the extension did not need absolute certainty to become useful.
+
+It needed honest classification.
+
+If the evidence strongly suggested real subtitles, surface them normally.
+
+If the path and naming looked like a thumbnail or storyboard resource, do not pretend it was dialogue.
+
+If the evidence was ambiguous, admit the ambiguity.
+
+That honesty became part of the project.
+
+I was increasingly comfortable with systems saying:
+
+*I know this much.*
+
+*I suspect this.*
+
+*I do not know that yet.*
+
+That is much safer than confident nonsense.
+
+In AI research, uncertainty matters.
+
+In software, it mattered too.
+
+## URLs Were Not Enough Again
+
+Then the subtitle problem became harder.
+
+Some real subtitle resources did not end in `.vtt`.
+
+Or `.srt`.
+
+Or anything helpful.
+
+The endpoint might look generic.
+
+An API route.
+
+An opaque resource.
+
+A URL with no useful filename at all.
+
+A path-based detector could miss it completely.
+
+But the browser knew something else.
+
+The response had a MIME type.
+
+`text/vtt`.
+
+`application/x-subrip`.
+
+`application/ttml+xml`.
+
+That was strong evidence.
+
+So the extension started observing response metadata too.
+
+Still passively.
+
+No body interception.
+
+No rewriting traffic.
+
+No pretending to be a proxy.
+
+Just listening to what the browser already knew.
+
+This was another step beyond the baseline mindset.
+
+Instead of asking:
+
+*Does this URL look like a subtitle?*
+
+the question became:
+
+*What evidence across the request and response lifecycle tells me this resource behaves like a subtitle?*
+
+That is a much richer question.
+
+## The Hidden Subtitle
+
+One test made this architecture feel worth the effort.
+
+The page exposed an opaque endpoint.
+
+Nothing in the URL clearly announced:
+
+*I am a subtitle.*
+
+A naive extension could easily ignore it.
+
+But the response came back as:
+
+`text/vtt; charset=utf-8`
+
+That was enough to investigate.
+
+The extension correlated the response with the correct request.
+
+Correct tab.
+
+Correct frame.
+
+Correct request identity.
+
+Successful response.
+
+Strong subtitle MIME evidence.
+
+Then I tested the exact URL manually.
+
+It returned genuine WebVTT subtitle data.
+
+That was satisfying in a different way from finding a master playlist.
+
+The media was obvious once you knew where to look.
+
+This subtitle was almost hiding in plain sight.
+
+The URL had said nothing useful.
+
+The browser metadata told the truth.
+
+## Intelligence Was Becoming Correlation
+
+By now I could see the project changing shape.
+
+At the beginning, Stream Inspector had basically been:
+
+watch requests
+
+→ find interesting extensions
+
+→ print URLs.
+
+Now it was becoming something closer to an evidence-correlation engine.
+
+Which tab?
+
+Which request?
+
+Which response?
+
+Which media type?
+
+What role?
+
+What context?
+
+What ranking evidence?
+
+What MIME evidence?
+
+Was the response successful?
+
+Did the observed evidence belong to this exact request, or am I accidentally borrowing information from another one?
+
+That last question mattered enormously.
+
+It would have been easy to capture a Referer from one request and attach it to another.
+
+Easy to see a subtitle MIME response and associate it with the wrong resource.
+
+Easy to mix old-page state into new playback.
+
+The more intelligent the system became, the more dangerous incorrect correlation became.
+
+So the architecture had to become conservative.
+
+Promote only when the evidence belongs together.
+
+That discipline was another form of novelty.
+
+Not flashy.
+
+But important.
+
+## What Am I Watching?
+
+There was still another missing piece.
+
+Suppose Stream Inspector found the perfect HLS master.
+
+Suppose it found two real subtitles.
+
+Suppose it preserved the request context.
+
+What would AiDM call the downloaded file?
+
+A media URL rarely contains a pleasant human title.
+
+It might contain an opaque ID.
+
+A token.
+
+A generic filename.
+
+A CDN path.
+
+The browser page knew something the stream itself often did not.
+
+The title.
+
+So Stream Inspector started collecting title evidence from the page.
+
+Again, the simple version would have been:
+
+`document.title`.
+
+Done.
+
+Again, real websites made that insufficient.
+
+A document title might include branding.
+
+Navigation text.
+
+A generic site name.
+
+An embedded player.
+
+Something unrelated to the actual media.
+
+So title detection also became evidence-based.
+
+Stronger metadata first.
+
+`og:title`.
+
+`twitter:title`.
+
+A clear visible `h1`.
+
+Then weaker fallback:
+
+`document.title`.
+
+That order mattered.
+
+The extension was no longer merely finding bytes.
+
+It was beginning to answer a human question:
+
+**What am I watching?**
+
+## A Title Is Not Playback
+
+Then another trap appeared.
+
+A homepage has a title.
+
+A search page has a title.
+
+A category page has a title.
+
+That does not mean playback exists.
+
+If the extension promoted every page title immediately, the UI could confidently tell the user they were watching something when no meaningful media had been detected at all.
+
+So title collection and title promotion became separate.
+
+The extension could observe title evidence early.
+
+But the title would not become the canonical playback title until meaningful media existed.
+
+HLS.
+
+DASH.
+
+Direct video.
+
+Something that actually justified calling this a playback session.
+
+Audio-only or subtitle-only activity was not enough.
+
+That became title gating.
+
+Another small layer of restraint.
+
+Another place where the system became more intelligent by refusing to jump too early.
+
+## The Baseline Was Behind Me Now
+
+At some point during these milestones, I realized something.
+
+I was still using the baseline extension.
+
+Still testing against it.
+
+Still respecting what it could capture.
+
+But the relationship had changed.
+
+At the beginning:
+
+**Can my extension do what the baseline does?**
+
+Later:
+
+**Can my extension explain more than the baseline?**
+
+Then:
+
+**Can my extension make better decisions with the same raw browser evidence?**
+
+Ranking scores.
+
+Explainable evidence.
+
+Candidate usefulness.
+
+Subtitle-role classification.
+
+MIME-based discovery.
+
+Canonical title evidence.
+
+Playback gating.
+
+These were not simply features copied from the reference extension.
+
+They were the beginning of Stream Inspector's own intelligence.
+
+In research language, this was where I could finally point to something and say:
+
+**this is the contribution.**
+
+**This is the novelty.**
+
+The baseline had helped me see the road.
+
+I was no longer walking exactly in its footsteps.
+
+## Better Does Not Mean Finished
+
+That realization did not mean I had "beaten" the baseline in some universal sense.
+
+Software is not that simple.
+
+The older extension might support cases mine did not.
+
+It might have years of edge cases behind it.
+
+It might behave better on websites I had never tested.
+
+Calling one extension simply "better" would have been the same kind of overconfidence I was learning to avoid everywhere else.
+
+What I could say honestly was narrower and more meaningful:
+
+For the workflows I was designing and the evidence I had tested, Stream Inspector now had capabilities the baseline did not give me in the same way.
+
+It ranked.
+
+It explained.
+
+It classified roles.
+
+It preserved alternatives.
+
+It correlated more evidence.
+
+It was becoming tailored to AiDM rather than being a generic stream detector.
+
+That was enough.
+
+Novelty does not need arrogance.
+
+It needs evidence.
+
+## From URLs to Playback Intelligence
+
+The project had crossed another boundary.
+
+It no longer made sense to describe it as:
+
+"a browser extension that detects streaming URLs."
+
+That description was becoming too small.
+
+The extension was trying to build a model of the current playback.
+
+Not an AI model.
+
+A structured understanding.
+
+Media candidates.
+
+Best current guess.
+
+Alternatives.
+
+Subtitles.
+
+Title.
+
+Request context.
+
+Target tab.
+
+Playback identity.
+
+That raised a new problem.
+
+All of this intelligence lived mostly in logs and internal state.
+
+The console was useful to me.
+
+It was not a product.
+
+A normal user should not need DevTools open.
+
+They should not need to read ranking evidence line by line.
+
+They should not need to copy a URL manually from a console.
+
+The raw engine was becoming intelligent enough.
+
+Now it needed a face.
+
+But I had promised myself something at the beginning of AiDM's second life:
+
+**engine first.**
+
+**interface later.**
+
+For once, I had actually kept that promise.
+
+The engine had earned its interface.
+
+---
+
+*Next: Chapter 12 — From Engine to Extension*
