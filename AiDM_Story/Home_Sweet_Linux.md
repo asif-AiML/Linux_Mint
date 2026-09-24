@@ -3940,29 +3940,69 @@ But at least I wanted every room to have a floor before I painted the walls.
 
 ## Git Stopped Being Decoration
 
-As the project expanded, Git also stopped being one of those tools I merely knew existed.
+Before AiDM, Git and GitHub were things I knew *about* far more than things I truly understood through use.
 
-Branches began making sense because I actually needed them.
+I had seen tutorials.
 
-A YouTube feature could live in one branch.
+I knew the vocabulary.
 
-Direct bulk work could live somewhere else.
+Repository.
 
-Secondary capabilities could be developed without disturbing the known-good mainline.
+Commit.
 
-The branch was no longer an abstract Git concept from a tutorial.
+Branch.
 
-It was a safety boundary.
+Push.
 
-I could experiment without turning the entire project into an experiment.
+Merge.
 
-That felt liberating.
+Like many technical concepts, they made perfect sense while somebody else was demonstrating them.
 
-The same thing happened with commits.
+Then the tutorial ended.
+
+Real understanding had not really started yet.
+
+AiDM changed that.
+
+The project gave Git a reason to exist in my hands.
+
+When I wanted to experiment with YouTube without risking stable direct downloads, a branch stopped being a diagram from a tutorial.
+
+It became protection.
+
+When I wanted to develop bulk direct downloading separately, another branch became a workshop.
+
+When secondary features such as torrent support needed somewhere to grow without contaminating the stable core, branching suddenly felt obvious rather than academic.
+
+That was when I understood one of the most important differences between learning a tool and *needing* a tool.
+
+Tutorials can introduce the mechanism.
+
+Practical use gives the mechanism meaning.
+
+The first time you create a branch because you genuinely do not want to damage something that already works, Git stops being theory.
+
+The first time you test a feature, decide it is solid, and bring it back toward the stable line, merging stops being a command you memorized.
+
+It becomes part of how you think.
+
+GitHub changed too.
+
+It was no longer only the place where I found other people's repositories.
+
+Now my own project history lived there.
+
+Branches showed parallel experiments.
+
+Commits showed decisions.
+
+The repository itself began remembering things that I would eventually forget.
+
+The same thing happened with commit messages.
 
 A meaningful commit was not merely a save point.
 
-It was a sentence in the project's history.
+It was a sentence in the project's engineering history.
 
 *Implemented playlist downloader.*
 
@@ -3970,14 +4010,17 @@ It was a sentence in the project's history.
 
 *Implemented direct downloading modes for bulk.*
 
-Those messages told a story.
+Months later, those sentences could reconstruct how AiDM grew.
 
-Not the emotional story I am writing here.
+I did not know then that I would eventually use those very commits to help write this book.
 
-The engineering story.
+But that is exactly what happened.
 
-And for the first time, I was creating both at once.
+The emotional history survived in my memory.
 
+The engineering history survived in Git.
+
+And practical use had taught me Git far faster than tutorials ever could.
 ## Then Codex Entered the Workshop
 
 There was still friction in how I was writing code.
@@ -4302,8 +4345,763 @@ Necessary enough that I could no longer ignore it.
 
 On August 27, I finally opened the broken room.
 
-And this time, I walked in with tools.
+And this time, I walked in with the right tools—and, more importantly, with prior research, more knowledge, and a much better understanding of what I was walking into.
 
 ---
 
-*Next: Chapter 9 — Entering the Broken Room*
+# Chapter 9 — Entering the Broken Room
+
+On August 27, 2026, the repository I had created twenty days earlier finally woke up.
+
+The name was **AIDM Stream Inspector**.
+
+The mission sounded simple enough when reduced to one sentence:
+
+observe what the browser sees and preserve the information AiDM needs.
+
+The problem was that browsers see *everything*.
+
+Images.
+
+Scripts.
+
+Fonts.
+
+Advertisements.
+
+Analytics.
+
+API calls.
+
+Fragments.
+
+Thumbnails.
+
+Audio.
+
+Video.
+
+Requests made by the page.
+
+Requests made by frames inside the page.
+
+Requests made and forgotten before I had time to understand why they existed.
+
+I had entered the broken room expecting to find a hidden stream.
+
+Instead, I opened the door and found a flood.
+
+## A Different Kind of Project
+
+The downloader was comfortable territory.
+
+Python.
+
+Subprocesses.
+
+Command-line tools.
+
+Functions I could read.
+
+Errors I could usually trace.
+
+The extension was different.
+
+JavaScript was not my language.
+
+Browser APIs were unfamiliar.
+
+Manifest permissions mattered.
+
+Firefox and Chromium did not behave identically.
+
+And Chromium's Manifest V3 service-worker model introduced another uncomfortable fact:
+
+the background process could disappear and come back.
+
+State that existed in memory could simply stop existing.
+
+This was not just another AiDM module.
+
+It was another world.
+
+So I approached it the same way I had learned to approach difficult things elsewhere.
+
+Do not solve the whole problem.
+
+Prove one fact at a time.
+
+## First, Give It Eyes
+
+The first serious milestone was intentionally stupid.
+
+Observe network requests.
+
+Nothing more.
+
+No ranking.
+
+No media intelligence.
+
+No subtitles.
+
+No title detection.
+
+No polished interface.
+
+No attempt to decide what mattered.
+
+Just watch.
+
+The extension began printing browser traffic into the developer console.
+
+Request after request.
+
+Method.
+
+URL.
+
+Evidence that the browser was doing something and that my code could see it.
+
+It was primitive.
+
+But it was real.
+
+The broken room finally had eyes.
+
+Unfortunately, those eyes had no idea what they were looking at.
+
+## Everything Is Useless Until It Has Context
+
+A network request by itself was not enough.
+
+Which tab produced it?
+
+Was it from the page I cared about?
+
+Was the user watching something there?
+
+Did the request belong to some background tab?
+
+Browser traffic without tab context was just noise with better formatting.
+
+So the next step was to associate requests with tabs.
+
+Then came the concept of the **target tab**.
+
+Not every open tab mattered.
+
+The extension needed to know which browser tab the user was actually inspecting.
+
+That sounds easy until different browsers begin teaching you what their event models really mean.
+
+Firefox behaved one way.
+
+Brave, as a Chromium browser using Manifest V3, behaved another.
+
+Tab identifiers looked different.
+
+Focus behavior looked different.
+
+And then came one of the first genuinely useful lessons from the Chromium side.
+
+## Memory Was Not Truth
+
+At one stage, the extension tracked the currently focused normal browser window using an in-memory variable.
+
+Reasonable.
+
+Until Brave's background service worker restarted.
+
+The variable returned as nothing.
+
+The browser still had a perfectly valid active tab.
+
+My extension had simply forgotten the fact.
+
+For a moment, the result looked like a browser problem.
+
+It was not.
+
+The architecture had trusted memory that was not guaranteed to survive.
+
+That forced a better rule:
+
+**if state can be reconstructed from the browser, do not treat a background variable as permanent truth.**
+
+The extension learned to rebuild what it needed from browser APIs and events.
+
+That was one of the first places where Firefox and Brave taught the project differently.
+
+And it would not be the last.
+
+## Then It Started Seeing Media
+
+Once observation and target-tab behavior were stable enough, the next question became obvious.
+
+Out of this flood, which requests look like media?
+
+HLS playlists.
+
+DASH manifests.
+
+Direct video.
+
+Direct audio.
+
+The first detector was deliberately conservative.
+
+I did not want an extension that called everything a stream just because the URL happened to contain an interesting word.
+
+But even conservative detection immediately exposed another problem.
+
+Some sites were clean.
+
+Others were chaos.
+
+A page might produce one obvious HLS master playlist.
+
+Another might produce several HLS playlists.
+
+Another might flood the console with hundreds of low-level fragments.
+
+Some URLs carried signed query parameters that absolutely could not be "cleaned" without destroying them.
+
+Sometimes the useful media URL was not even obvious in the outer path—it was encoded inside a query parameter.
+
+The extension was beginning to see media.
+
+But seeing media was not the same thing as knowing which media mattered.
+
+That distinction would eventually become an entire architecture of its own.
+
+Before I could build that, though, I needed to know whether what I was seeing was even *correct*.
+
+That is when something from a completely different part of my life entered the room.
+
+## My Master's Research Followed Me Into the Browser
+
+My thesis work was still happening alongside AiDM.
+
+The two worlds were completely different on the surface.
+
+One involved AI models.
+
+Training.
+
+Validation.
+
+Testing.
+
+Evaluation.
+
+The other involved browser requests and media URLs.
+
+But research had taught me a habit that suddenly fitted perfectly.
+
+**Establish a baseline.**
+
+When evaluating a model, you do not simply produce a number and declare victory.
+
+You need something to compare against.
+
+Another model.
+
+A known result.
+
+A reference point.
+
+Without a baseline, improvement can become a feeling.
+
+With one, you can ask a much sharper question:
+
+*Did my approach actually do what I think it did?*
+
+I had never learned that idea for browser extensions.
+
+I had learned it from research.
+
+And that was what fascinated me.
+
+Knowledge had crossed worlds.
+
+## Baseline One: Another Stream Detector
+
+I already knew another browser extension that could detect streaming URLs and expose useful request information.
+
+The same kind of tool that had helped during premature AiDM.
+
+This time I stopped treating it only as a utility.
+
+I turned it into a baseline.
+
+Open the media page.
+
+Start playback.
+
+Watch the known detector.
+
+Watch my extension.
+
+If the baseline sees an HLS URL, does mine see it?
+
+If it captures a Referer, do I observe one?
+
+If it identifies a useful media request, am I staring at the same part of the traffic?
+
+Suddenly debugging became much less blind.
+
+I was not asking:
+
+*Why can't my extension detect this mysterious thing?*
+
+I could ask:
+
+*The baseline clearly sees it. What evidence is available to both extensions, and what am I failing to observe or classify?*
+
+That difference was enormous.
+
+There was another working piece of software in the room.
+
+I did not know its internal implementation.
+
+I did not need to copy it.
+
+Its behavior gave me a reference point.
+
+The search space became smaller.
+
+My experiments became more precise.
+
+## But Matching the Baseline Was Not Enough
+
+Eventually my console began exposing the kinds of things I wanted.
+
+Media URLs.
+
+Request context.
+
+Useful-looking HLS candidates.
+
+User-Agent.
+
+Referer.
+
+Other observed information.
+
+That felt like success.
+
+But a harder question appeared immediately.
+
+**Does any of this actually reproduce outside the browser?**
+
+An extension can print a beautiful URL that is completely useless to a downloader.
+
+I already knew that from the first AiDM.
+
+The browser can play something while the copied URL fails elsewhere.
+
+So I needed another baseline.
+
+The obvious choice was sitting inside AiDM already.
+
+`yt-dlp`.
+
+Except I deliberately did **not** test through AiDM.
+
+## Let the Downloader Sleep
+
+At that moment, AiDM's streaming branch was still immature.
+
+It did not yet have the final parser or handoff architecture needed to digest everything the extension might eventually produce.
+
+I could have rushed those pieces.
+
+Add temporary parsing.
+
+Wire a few flags.
+
+Make AiDM understand whatever format I happened to be testing that day.
+
+But that would have contaminated the experiment.
+
+If a download failed, what had failed?
+
+The extension?
+
+The captured URL?
+
+The request context?
+
+My new parser?
+
+AiDM's routing?
+
+A quoting bug?
+
+Too many variables.
+
+So I left AiDM alone.
+
+Peacefully sleeping.
+
+No rushed bridge.
+
+No speculative parser.
+
+No quick code written only because I needed today's test to pass.
+
+Instead, I took the raw ingredients from the extension and fed them directly to the engine.
+
+`yt-dlp`.
+
+Alone.
+
+That became baseline two.
+
+## The Cleanest Possible Question
+
+A raw yt-dlp command was easy to manipulate.
+
+Start with the URL.
+
+Does it work?
+
+No?
+
+Add the Referer.
+
+Try again.
+
+Remove it.
+
+Add User-Agent.
+
+Try again.
+
+Add both.
+
+Try again.
+
+One ingredient at a time.
+
+That pattern felt familiar too.
+
+From research.
+
+**Ablation.**
+
+In model experiments, ablation can help reveal which component actually contributes to a result.
+
+Remove something.
+
+Measure what changes.
+
+Put it back.
+
+Remove something else.
+
+The concept crossed into AiDM almost naturally.
+
+I was now doing crude ablation studies on download reproduction.
+
+URL only.
+
+URL plus Referer.
+
+URL plus User-Agent.
+
+URL plus Referer plus User-Agent.
+
+Later, cookies would enter some experiments too.
+
+Not because I wanted to sound scientific.
+
+Because I wanted to know what was actually doing the work.
+
+## Discovery and Reproduction Split Apart
+
+One real test made the distinction brutally clear.
+
+The browser played the media.
+
+The extension found the HLS URL.
+
+The URL looked right.
+
+Outside the browser, the URL alone failed.
+
+That could have pushed me back toward the old conclusion:
+
+*server-side security wall.*
+
+But my mind no longer stopped there.
+
+The browser works.
+
+The raw URL does not.
+
+Therefore something differs.
+
+What?
+
+That is a testable question.
+
+So I added captured context.
+
+Tried again.
+
+Removed pieces.
+
+Tried again.
+
+And the problem started becoming less mysterious.
+
+In one important case, supplying the Referer was enough to turn a failing reproduction into a working one.
+
+That was a major intellectual victory.
+
+Not because Referer was some magical universal solution.
+
+It was not.
+
+The victory was understanding that:
+
+**discovering the correct media URL and reproducing the successful browser request are two separate problems.**
+
+Premature AiDM had felt this problem.
+
+Now I could name it.
+
+And once you can name a problem precisely, you can design for it.
+
+## A Wrong Conclusion Still Slipped Through
+
+The process was improving.
+
+I was improving.
+
+That did not mean I suddenly became immune to bad conclusions.
+
+During one investigation, cookies appeared to be essential.
+
+A command generated by the older detector included browser cookies.
+
+A reproduction worked in one setup and failed in another.
+
+The evidence seemed to point in one direction.
+
+Cookies.
+
+For a while, I documented that conclusion.
+
+Then the baseline mindset attacked my own documentation.
+
+What if cookies were not the reason?
+
+What if another variable had changed at the same time?
+
+So I tested again.
+
+Removed cookies.
+
+Kept other context.
+
+Tested combinations.
+
+And the confident conclusion weakened.
+
+In that particular case, Referer alone was enough.
+
+Cookies had looked guilty because the experiment had changed too many things at once.
+
+That correction became more valuable than getting the answer right on the first attempt.
+
+It proved that the method could catch *me* too.
+
+## The Developer in Me Was Changing
+
+Something strange was happening during all of this.
+
+I still would not have called myself a strong JavaScript developer.
+
+I was not suddenly writing browser architecture from memory.
+
+ChatGPT and Codex were carrying enormous parts of implementation.
+
+But my own thinking was becoming much sharper.
+
+I could design tests.
+
+I could isolate variables.
+
+I could recognize when two problems had been mixed together.
+
+I could decide not to modify AiDM because doing so would weaken the experiment.
+
+I could use one mature extension as a behavioral baseline and one mature downloader as an execution baseline.
+
+I could take a research concept from AI evaluation and use it to debug a browser extension.
+
+It felt as though invisible doors had opened.
+
+Not because somebody had taught me a course called *How to Build a Stream Inspector*.
+
+Nobody had.
+
+The knowledge came from everywhere.
+
+Linux.
+
+My Master's.
+
+Python.
+
+AI research.
+
+Git.
+
+Open-source projects.
+
+Failed downloads.
+
+Browser consoles.
+
+yt-dlp commands.
+
+Each piece belonged to a different room.
+
+My brain was starting to connect the hallways.
+
+## Two Projects, One Learning Loop
+
+The exchange went both directions.
+
+Research taught me baselines and ablation.
+
+I brought those habits into AiDM.
+
+AiDM taught me more disciplined coding, debugging, modularity, Git workflows, and experimental isolation.
+
+Those habits went back into my research code.
+
+I was not really doing one job in the day and another unrelated hobby at night.
+
+The two were feeding each other.
+
+A model experiment could teach me how to test a downloader hypothesis.
+
+A downloader bug could teach me how dangerous hidden assumptions were in research code.
+
+A Git branch used to protect an AiDM feature could make branching feel natural when I needed safer experimentation elsewhere.
+
+The learning was multiplying.
+
+That might be one of the most important things AiDM gave me.
+
+Not a download manager.
+
+A way of thinking.
+
+## The Same Trick Would Return
+
+Weeks later, the old YouTube quality-selector mystery would come back.
+
+AiDM said 1080p.
+
+The downloaded file said 360p.
+
+Earlier, browser-session restrictions had looked suspicious.
+
+This time I knew what to do.
+
+Establish the baseline.
+
+Raw yt-dlp.
+
+Can it download the playlist at 1080p?
+
+Yes.
+
+Good.
+
+Now reproduce AiDM's internal format choices directly in yt-dlp.
+
+Remove the application around them.
+
+Test the engine alone.
+
+The culprit emerged.
+
+The problem was not the browser session.
+
+It was AiDM's own format construction.
+
+Fix the expression.
+
+Put the proven behavior back into AiDM.
+
+That debugging method had not come from a programming tutorial.
+
+It had grown out of this strange intersection between research and software building.
+
+By then it felt natural.
+
+## The Inspector Could See
+
+Back in the browser, the extension had crossed an important threshold.
+
+It could observe traffic.
+
+It could associate requests with the correct tab.
+
+It could survive browser lifecycle weirdness more intelligently.
+
+It could identify obvious media candidates.
+
+It could preserve exact URLs.
+
+It could expose useful browser request context.
+
+And, using external baselines, I could begin proving whether those observations were meaningful.
+
+That was the first real victory inside the broken room.
+
+The room was no longer dark.
+
+The extension could see.
+
+But there was a new problem.
+
+Sometimes it saw **too much**.
+
+A master playlist.
+
+A child playlist.
+
+An audio rendition.
+
+A video rendition.
+
+A direct media file.
+
+Hundreds of fragments.
+
+Several things could all be technically valid media.
+
+Only some of them were useful handoff candidates.
+
+The first AiDM had suffered because it could not find enough.
+
+Now its future companion had the opposite problem.
+
+It had found too much.
+
+The next challenge was not detection.
+
+It was judgment.
+
+---
+
+*Next: Chapter 10 — Teaching the Inspector What Matters*
+
