@@ -661,6 +661,633 @@ This time, I was not merely curious.
 
 I was tired enough to walk through.
 
+
 ---
 
-*Next: Chapter 3 — The Door Called Linux*
+# Chapter 3 — The Door Called Linux
+
+The decision to leave Windows did not arrive with confidence.
+
+It arrived with exhaustion.
+
+That was an important difference.
+
+If I had been confidently excited about Linux, the move would have been easy to explain. I would have simply said: *I found something better, so I switched.*
+
+But that was not what happened.
+
+Linux still scared me.
+
+Not because I thought it was bad.
+
+Because I knew enough about computers to understand how much I did **not** know about it.
+
+Windows had trained me for years. I knew where things lived. I knew how to recover from common mistakes. I knew what a broken driver looked like. I knew which settings were harmless and which ones could turn a normal evening into a troubleshooting session.
+
+Linux offered none of that familiarity.
+
+It offered possibility.
+
+And possibility is exciting only until you realize you are the one responsible for making it work.
+
+## The Terminal Problem
+
+The terminal was the biggest symbol of that fear.
+
+I had seen terminal commands before. I had used command-line tools in academic work. I was not unfamiliar with the idea of typing commands into a black window.
+
+But there is a huge psychological difference between:
+
+*run this command for an assignment*
+
+and:
+
+*your operating system lives here now.*
+
+Windows had always given me visual guardrails.
+
+Buttons.
+
+Menus.
+
+Dialog boxes.
+
+A checkbox that could be unchecked again.
+
+A settings page where you could usually see what you were changing.
+
+The Linux terminal felt different.
+
+It felt powerful.
+
+Which was exactly why it felt dangerous.
+
+A graphical interface politely asks what you want to do.
+
+A terminal assumes you know.
+
+That was how I saw it at the time.
+
+What if I copied the wrong command?
+
+What if I changed something system-wide?
+
+What if a tutorial was outdated?
+
+What if some random forum answer destroyed something I did not know how to restore?
+
+And perhaps the worst question:
+
+What if something broke and I could not even explain the problem properly enough to search for the solution?
+
+For years, this fear had helped push me back toward Windows.
+
+Windows could frustrate me.
+
+But at least I understood the language of the fight.
+
+Linux seemed to speak another one.
+
+## The Missing Bridge
+
+By the end of 2025, I had reached a strange position.
+
+I wanted what Linux represented.
+
+I wanted the control.
+
+I wanted the lighter system.
+
+I wanted the freedom to decide what belonged on my computer.
+
+I wanted the open-source world I had only observed from a distance.
+
+I wanted to stop feeling like I was constantly negotiating with the operating system.
+
+And yet there was still this gap between wanting Linux and trusting myself to live inside it.
+
+I could read tutorials.
+
+I could search forums.
+
+I could watch videos.
+
+But what happens when your problem is not exactly the same as the tutorial?
+
+What happens when the command fails?
+
+What happens when the output looks completely different?
+
+What happens when you do not even know which part of the output matters?
+
+That was the part I feared most.
+
+Not the command.
+
+The moment **after** the command.
+
+The moment when something unexpected happens and you are alone with a terminal full of text you do not understand.
+
+I needed something that could stand between ignorance and experimentation.
+
+Something I could ask:
+
+*What does this mean?*
+
+*Is this safe?*
+
+*What do I do next?*
+
+*Why did this fail?*
+
+*Tell me exactly what this command changes before I run it.*
+
+At the time, I did not yet realize that I already had it.
+
+## Someone Was Already in the Room
+
+The answer did not arrive like a new piece of software.
+
+It was already there.
+
+It had been there for a while.
+
+I had used it.
+
+I knew what it was.
+
+Everyone did.
+
+But I had been looking at it from the wrong angle.
+
+Imagine a dark room.
+
+You hear footsteps before you see anyone.
+
+Not hurried.
+
+Not dramatic.
+
+Just deliberate.
+
+The camera catches the shoes first.
+
+Then the frame rises slowly.
+
+A figure walks forward.
+
+You recognize the silhouette, but your mind does not connect it to the problem yet.
+
+The tension comes from that delay.
+
+Who is this supposed to be?
+
+What does this person have to do with Linux?
+
+Why are they here?
+
+The camera keeps moving upward.
+
+Hands.
+
+Shoulders.
+
+Face still hidden.
+
+The audience starts guessing.
+
+A Linux developer?
+
+Some new operating system?
+
+A magical compatibility layer?
+
+An IDM replacement?
+
+Then the face finally enters the light.
+
+And the reaction is not:
+
+*Who is that?*
+
+The reaction is:
+
+**Oh.**
+
+**So this was the one.**
+
+AI.
+
+Not a new stranger.
+
+An old acquaintance entering the story in a role I had never considered.
+
+## The Moment Everything Changed
+
+I had already used AI assistants.
+
+I knew they could explain things.
+
+I knew they could generate text.
+
+I knew they could help with code.
+
+But until that point, I had never connected AI with the exact thing that had always frightened me away from Linux.
+
+The terminal.
+
+And then the thought landed.
+
+Not gradually.
+
+Almost all at once.
+
+**Now I have AI.**
+
+That changed everything.
+
+If Linux showed me an error, I could paste it into AI.
+
+If a command looked dangerous, I could ask what every part meant.
+
+If I needed to install something, I could ask for the safest method.
+
+If I wanted to undo it later, I could ask how to remove it cleanly.
+
+If a tutorial assumed knowledge I did not have, I could stop halfway and ask questions.
+
+If the terminal spoke in a language I did not understand, I suddenly had a translator sitting beside me.
+
+The thing that had frightened me most about Linux did not disappear because Linux became simpler.
+
+It disappeared because I no longer felt alone inside the complexity.
+
+That distinction mattered.
+
+The terminal was still the terminal.
+
+The commands were still real.
+
+A bad command could still be bad.
+
+But now there was something between blind copying and understanding.
+
+A conversation.
+
+I could ask before doing.
+
+I could ask after failing.
+
+I could keep asking until the strange output stopped looking strange.
+
+The black terminal window had not changed at all.
+
+But somehow it looked less dark.
+
+## "Now I Have AI"
+
+That sentence became the turning point.
+
+**Now I have AI.**
+
+It sounds almost trivial written down.
+
+Four words.
+
+But those four words removed one of the biggest psychological barriers between me and Linux.
+
+For years, I had looked at Linux and thought:
+
+*What if I get stuck?*
+
+Now the answer was sitting in another window.
+
+I could get stuck.
+
+Then I could ask.
+
+And continue.
+
+That was enough.
+
+Not enough to make me an expert.
+
+Not enough to guarantee I would never break anything.
+
+But enough to make the unknown feel survivable.
+
+And once the fear of being stranded disappeared, the balance shifted dramatically.
+
+Windows no longer had familiarity on one side and Linux had danger on the other.
+
+Now it looked more like this:
+
+Windows had familiarity—but also years of accumulated frustration.
+
+Linux had uncertainty—but now I had help navigating it.
+
+That was a much fairer fight.
+
+## The Plan Was Not Heroic
+
+I did not immediately wipe the drive.
+
+I was not that brave.
+
+Or that foolish.
+
+The plan was practical.
+
+Linux Mint had always seemed like the most welcoming distribution for someone coming from Windows. Its desktop looked familiar. Its philosophy appealed to me. It was widely recommended as a place where a Windows user could land without feeling as though somebody had replaced the floor during the night.
+
+So I decided to try it properly.
+
+And because I still did not trust the jump completely, I kept Windows 11.
+
+Dual boot.
+
+One machine.
+
+Two worlds.
+
+Windows remained there as insurance.
+
+If Linux failed me, Windows was one restart away.
+
+That safety net mattered enormously.
+
+I was not declaring war.
+
+I was conducting an experiment.
+
+At least, that was what I told myself.
+
+I asked Gemini to guide me through the process.
+
+Partitioning.
+
+Boot setup.
+
+Installation.
+
+The parts that would once have stopped me before I even began could now be discussed step by step.
+
+Why this partition?
+
+What does this option do?
+
+Is this safe?
+
+What happens if I choose this?
+
+The answers did something tutorials rarely could.
+
+They adapted to *my* confusion.
+
+And slowly, Linux Mint installed.
+
+Then it booted.
+
+## First Contact
+
+The first thing I remember was not some revolutionary technical feature.
+
+It was familiarity.
+
+A panel.
+
+A menu.
+
+A desktop.
+
+Folders.
+
+A taskbar-like layout.
+
+Linux Mint did not greet me by demanding that I forget everything I knew about computers.
+
+It met me somewhere in the middle.
+
+That mattered.
+
+I started doing what every curious new Linux user does.
+
+Click everything.
+
+Open settings.
+
+Change themes.
+
+Search menus.
+
+Look at system information.
+
+Install applications.
+
+Break tiny things.
+
+Fix tiny things.
+
+Ask AI what I had just done.
+
+Repeat.
+
+The terminal appeared again and again.
+
+But something strange happened.
+
+Every time I used it successfully, it became slightly less intimidating.
+
+The first command feels like touching a live wire.
+
+The twentieth feels like using a tool.
+
+The hundredth begins to feel faster than opening a settings window.
+
+I was not there yet.
+
+But the fear was already retreating.
+
+## A Twenty-Day Test I Never Planned
+
+I kept Windows installed because I expected to need it.
+
+Surely there would be some application.
+
+Some driver.
+
+Some university task.
+
+Some file format.
+
+Some stubborn piece of software that would force me back.
+
+So I waited for the moment Linux would fail the test.
+
+A day passed.
+
+Then another.
+
+I did my normal work.
+
+Browsed the web.
+
+Handled files.
+
+Used the terminal.
+
+Installed tools.
+
+Customized the system.
+
+Solved problems.
+
+Asked Gemini questions.
+
+Kept going.
+
+Days became weeks.
+
+And something increasingly awkward was happening to the Windows partition.
+
+Nothing.
+
+I was not using it.
+
+Roughly twenty days passed without a meaningful reason to boot back into Windows.
+
+That was not part of the plan.
+
+The plan had been:
+
+*Try Linux safely while keeping Windows available.*
+
+The experiment was quietly producing a different conclusion:
+
+*Maybe Windows is the backup system now.*
+
+That realization felt much bigger than installing Linux had.
+
+I had spent years believing Linux was the risky environment and Windows was the safe place I could always return to.
+
+Yet here I was, living normally in Linux while Windows sat untouched on another partition.
+
+The direction of dependence was reversing.
+
+## One Hundred Gigabytes of Fear
+
+Then I looked at the disk.
+
+Windows was still there.
+
+Around a hundred gigabytes of space reserved for an operating system I had not needed in weeks.
+
+That space represented more than storage.
+
+It represented hesitation.
+
+Insurance.
+
+The fear that sooner or later Linux would expose some fatal weakness and I would crawl back.
+
+But by then I had another question.
+
+What exactly was I waiting for?
+
+The emergency had never come.
+
+Linux Mint was working.
+
+My Master's work was continuing.
+
+The terminal was no longer a monster.
+
+AI was beside me whenever something unfamiliar appeared.
+
+And Windows—my supposed safety net—was simply occupying space.
+
+There comes a moment in every migration when trying the new thing ends and choosing it begins.
+
+Mine arrived while looking at that partition.
+
+I had entered Linux with a bridge behind me.
+
+Now I was considering burning it.
+
+## The Linux Katana
+
+I could make this sound solemn.
+
+It was not.
+
+In my head, the moment was much more theatrical.
+
+Windows had survived years of debloating.
+
+Years of PowerShell.
+
+Years of optimization.
+
+Years of workarounds.
+
+It had survived unsupported hardware.
+
+It had survived my frustration.
+
+It had even been allowed to come with me into Linux as a backup.
+
+And now it was sitting there, taking up around a hundred gigabytes while I was happily living somewhere else.
+
+Enough.
+
+I metaphorically drew the Linux katana.
+
+One clean strike.
+
+The Windows partition disappeared.
+
+Space reclaimed.
+
+No dual boot.
+
+No emergency escape route.
+
+No "just in case."
+
+After years of Windows being synonymous with computers in my mind, the machine became Linux-only.
+
+I had expected that moment to feel risky.
+
+Instead, it felt strangely peaceful.
+
+There was nothing left to retreat to.
+
+And I did not want to.
+
+Before 2026 had properly begun, Windows was gone from my personal machine.
+
+For the first time in my life, my computer did not run a Microsoft operating system.
+
+I looked around Linux Mint—the system that had once seemed intimidating, inconvenient, and incomplete—and realized something almost ridiculous.
+
+I was comfortable.
+
+Not finished.
+
+Not expert.
+
+Not trouble-free.
+
+But comfortable.
+
+The operating system I had once been afraid to enter was beginning to feel like somewhere I belonged.
+
+I had crossed the door.
+
+The next challenge was much harder.
+
+Now I had to turn this unfamiliar place into a home.
+
+---
+
+*Next: Chapter 4 — Home Sweet Linux*
