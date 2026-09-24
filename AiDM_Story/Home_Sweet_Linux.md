@@ -3161,6 +3161,525 @@ But the name had survived.
 
 This time, I was coming back with more than hope.
 
+
 ---
 
-*Next: Chapter 7 — AiDM Reborn*
+# Chapter 7 — AiDM Reborn
+
+On August 2, 2026, AiDM came back.
+
+Not as an idea.
+
+Not as a folder full of experiments.
+
+Not as something I might return to someday.
+
+It came back as code.
+
+There is a difference between thinking about resurrecting a project and making the first commit.
+
+Thoughts are reversible.
+
+Commits are evidence.
+
+The surviving AiDM repository begins with one:
+
+`Initial commit: Combined yt-dlp and aria2c`
+
+That line is almost comically modest considering what it meant to me.
+
+The project that had once been deleted now had a history again.
+
+A real one.
+
+This time, I intended to keep it alive.
+
+## No More Premature Architecture
+
+The first AiDM had taught me one painful lesson.
+
+Do not begin by pretending the hard part is already solved.
+
+That sounds obvious now.
+
+It was not obvious then.
+
+The premature version had been built with the excitement of making something visible quickly.
+
+A small interface.
+
+A place to paste a URL.
+
+Buttons.
+
+A feeling that the application existed.
+
+But when the deeper engine hit streaming problems, the interface became irrelevant.
+
+A beautiful front door does not matter if the building behind it has no foundation.
+
+So the reborn AiDM began with the opposite philosophy.
+
+**Engine first.**
+
+Interface later.
+
+Much later, if necessary.
+
+By then I had become comfortable enough with Linux that this did not feel like a compromise.
+
+The command line had become enjoyable.
+
+Direct.
+
+Inspectable.
+
+If something failed, I wanted to see the failure.
+
+If a subprocess printed an error, I wanted the error.
+
+If a tool behaved unexpectedly, I wanted to know exactly which tool had done it.
+
+The terminal was no longer the thing keeping me away from Linux.
+
+It had become the perfect place to build AiDM.
+
+That alone showed how much had changed since the first attempt.
+
+## The Three Engines Finally Had Jobs
+
+The reborn architecture began with a much clearer idea.
+
+AiDM did not need one magical downloader.
+
+It needed the right engines for the right jobs.
+
+`aria2c`.
+
+`yt-dlp`.
+
+FFmpeg.
+
+Three tools.
+
+Three different strengths.
+
+The mistake would have been forcing one of them to pretend it was all three.
+
+For ordinary direct downloads, `aria2c` made sense.
+
+It was fast.
+
+Resumable.
+
+Comfortable with multiple connections.
+
+Purpose-built for moving files efficiently.
+
+For YouTube and supported websites, `yt-dlp` made sense.
+
+It already understood extraction.
+
+Formats.
+
+Site-specific logic.
+
+Media discovery.
+
+There was no reason for me to reimplement what a mature project already did far better.
+
+And where possible, `yt-dlp` could still hand the actual downloading work to `aria2c`.
+
+Then there was FFmpeg.
+
+FFmpeg would remain available where media processing, merging, conversion, or stream handling genuinely required it.
+
+That was the new philosophy.
+
+Not:
+
+*Which downloader is the best?*
+
+But:
+
+*Which engine should own this responsibility?*
+
+That question became one of the foundations of AiDM.
+
+## The First Commit Was Already More Serious Than It Looked
+
+The surviving first commit was not an empty scaffold.
+
+That surprised me when I later looked back at the history.
+
+The initial `aidm.py` already knew about more than one kind of job.
+
+Direct files could be routed toward `aria2c`.
+
+YouTube had its own path.
+
+Video and audio were treated differently.
+
+There was even a WAV conversion option.
+
+`yt-dlp` could use `aria2c` where appropriate.
+
+Native DASH and HLS behavior was already being considered.
+
+The code was still concentrated in one file.
+
+But the architecture in my head was no longer concentrated around one tool.
+
+That distinction mattered more than the file count.
+
+Premature AiDM had been an attempt to imitate the experience of IDM.
+
+Reborn AiDM was starting to think like a system.
+
+## One Day Later, I Broke It Apart
+
+On August 3, the single-file beginning did not survive.
+
+That was intentional.
+
+The project was separated into modules.
+
+Routing.
+
+Downloading.
+
+YouTube behavior.
+
+Detection.
+
+Utilities.
+
+The exact structure would continue evolving, but the principle was already visible:
+
+responsibilities should have homes.
+
+This was another difference between the two lives of AiDM.
+
+The first version had been something I wanted to make work.
+
+The second version was something I wanted to be able to grow.
+
+Those are not the same goal.
+
+Code can work today and still become tomorrow's trap.
+
+I had started thinking about that earlier this time.
+
+## ChatGPT Was Not Gemini 2.0
+
+Buying ChatGPT Plus did not magically make me a better developer.
+
+It did not solve AiDM.
+
+It did not remove bugs.
+
+And it certainly did not make every answer correct.
+
+What changed was the quality of the working relationship.
+
+The conversations could go deeper.
+
+The context could stay intact longer.
+
+I could discuss architecture before asking for code.
+
+I could challenge an idea.
+
+Compare approaches.
+
+Describe what I had tested.
+
+Paste failures.
+
+Return with new evidence.
+
+Instead of treating AI as a command generator, I increasingly treated it as a technical partner I could argue with.
+
+That mattered because I had learned something from the first AiDM:
+
+If the AI's reasoning becomes your reasoning without inspection, its blind spots become yours too.
+
+So the relationship changed.
+
+I still asked for help.
+
+A lot of help.
+
+But I wanted to understand why a choice was being made.
+
+I wanted to know what would happen if it failed.
+
+I wanted alternatives.
+
+I wanted the architecture to make sense before the code became large enough to hide bad decisions.
+
+That habit would eventually become one of the defining ways I built AiDM.
+
+## Something Strange Happened While Writing This
+
+There is a small coincidence worth preserving here.
+
+I am not writing this history years after everything ended.
+
+I am writing it while the project is still alive.
+
+While these chapters are being written, the later parts of this story are still moving.
+
+And during the writing of this very book, something that does not belong in this chapter yet crossed its first major threshold.
+
+A later piece of the AiDM world—one the reader has not met—reached its first beta milestone.
+
+Its architecture is feature-complete for the workflow I designed.
+
+It has already survived real tests.
+
+More tests remain.
+
+More failures may still appear.
+
+Fixes will almost certainly come.
+
+But something that once existed only as an answer to an impossible-looking problem now exists well enough to wear a beta tag.
+
+I will not introduce it early.
+
+That would ruin the story.
+
+For now, it is enough to say this:
+
+while I was writing about the day AiDM came back to life, I was also watching one of its future descendants take its first real victory.
+
+History was being written while history was still happening.
+
+That feels appropriate for AiDM.
+
+## August 6: The Old Enemy Walked Back In
+
+The resurrection went well at first.
+
+Direct downloads were familiar territory.
+
+YouTube was manageable.
+
+The architecture was cleaner.
+
+The tools had better-defined responsibilities.
+
+Then streaming returned.
+
+Of course it did.
+
+The thing that had killed premature AiDM had not vanished simply because I had learned more.
+
+But this time I did not want streaming mixed into some generic fallback and forgotten.
+
+It deserved its own model.
+
+On August 6, the repository gained dedicated stream parsing and routing.
+
+HLS.
+
+DASH.
+
+VTT.
+
+Unknown streams.
+
+Headers.
+
+A structured `StreamInput`.
+
+This was a small architectural moment with a large meaning.
+
+The old AiDM had encountered streaming as an obstacle.
+
+The reborn AiDM began treating streaming as a domain.
+
+That shift is easy to miss if you only look at what the program printed.
+
+But internally it changed the question.
+
+Before:
+
+*Why won't this URL download?*
+
+Now:
+
+*What kind of input is this, what evidence do we have, and which path should own it?*
+
+That is a much better question.
+
+## The Browser Was Still Holding Something
+
+The new stream path could carry headers.
+
+That mattered.
+
+If a stream needed a `User-Agent`, a `Referer`, or another observed request value, AiDM could pass that information forward.
+
+It was progress.
+
+But it also made the remaining problem clearer.
+
+Where was that information supposed to come from?
+
+The browser already had it.
+
+The browser was successfully playing the media.
+
+Somewhere inside that successful playback were the exact requests, URLs, headers, and context that AiDM needed.
+
+I was now much less willing to describe that situation as magic.
+
+Or an impenetrable server wall.
+
+The browser knew something.
+
+Therefore there was something to observe.
+
+That thought was the beginning of a very dangerous idea.
+
+But I did not pursue it immediately.
+
+Not yet.
+
+## A Repository Appeared Before the Work Did
+
+On August 7, only five days after reborn AiDM began, I created another repository.
+
+At the time it was mostly structure.
+
+An empty stage waiting for actors.
+
+I knew what problem it was supposed to attack.
+
+I also knew it was going to be harder.
+
+Browser extensions meant JavaScript.
+
+Browser APIs.
+
+Firefox behavior.
+
+Chromium behavior.
+
+Network observation.
+
+Permissions.
+
+A completely different development environment from the Python code where I felt comfortable.
+
+And unlike Python, JavaScript was not a language I felt ready to navigate independently.
+
+So I did something that might look strange in Git history.
+
+I created the place where the hard problem would eventually be solved.
+
+Then I walked away from it.
+
+For about twenty days.
+
+Not because I had abandoned the idea.
+
+Because AiDM still had many rooms I knew how to build.
+
+And I wanted to build those first.
+
+## Build the Stable Rooms First
+
+The metaphor that fits this period best is a house.
+
+One room was broken.
+
+Badly.
+
+The streaming room.
+
+It required something outside the downloader itself.
+
+Something that could stand inside the browser and understand what was happening there.
+
+I knew that.
+
+But the rest of the house was unfinished too.
+
+Direct downloading still had room to grow.
+
+YouTube still had room to grow.
+
+Bulk workflows did not exist yet.
+
+Playlist handling did not exist yet.
+
+Quality selection did not exist yet.
+
+Secondary capabilities were still waiting.
+
+Why spend every day staring at the hardest broken room while the rest of the building was still bare concrete?
+
+So I avoided it.
+
+Deliberately.
+
+Not forever.
+
+Just long enough to finish the rooms whose foundations I understood.
+
+That decision created one of the most misleading gaps in the repository timeline.
+
+The second repository existed.
+
+But serious work there did not begin until August 27.
+
+Those twenty days were not a pause in AiDM development.
+
+They were some of its busiest days.
+
+## This Time, Failure Would Have to Work Harder
+
+The first AiDM had died because I reached a wall and believed the wall.
+
+The reborn AiDM was already behaving differently.
+
+When a problem appeared, I separated it.
+
+Named it.
+
+Gave it a branch.
+
+Gave it a module.
+
+Kept the working parts working.
+
+Built around evidence instead of panic.
+
+I was still going to make mistakes.
+
+Some of them would be embarrassing.
+
+Some explanations would turn out to be wrong.
+
+Some fixes would fix the wrong thing.
+
+Some branches would be renamed because my understanding of the problem changed.
+
+But there was one difference that mattered more than all of those future errors.
+
+I was no longer expecting the project to prove itself easy.
+
+I expected it to fight back.
+
+And this time, I had no intention of killing it when it did.
+
+The resurrection was complete.
+
+Now AiDM had to grow.
+
+---
+
+*Next: Chapter 8 — Building the Other Rooms First*
