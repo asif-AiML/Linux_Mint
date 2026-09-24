@@ -3680,6 +3680,630 @@ The resurrection was complete.
 
 Now AiDM had to grow.
 
+
 ---
 
-*Next: Chapter 8 — Building the Other Rooms First*
+# Chapter 8 — Building the Other Rooms First
+
+The hardest room was still waiting.
+
+I knew it.
+
+The browser-side streaming problem had not disappeared.
+
+I had already created a separate repository for the thing that would eventually attack it.
+
+But I was not ready to live inside that problem every day.
+
+Not yet.
+
+So I turned around and looked at the rest of the house.
+
+There was a lot to build.
+
+## Stable Rooms Before the Broken One
+
+The downloader already had a foundation.
+
+Direct links worked.
+
+YouTube worked.
+
+Streaming had its own routing path.
+
+The architecture had been broken into modules.
+
+That was enough to start expanding in directions where the behavior was understandable and testable.
+
+This was deliberate.
+
+I did not want AiDM to become a project where every development session ended inside the same unsolved streaming wall.
+
+That would have been exhausting.
+
+Instead, I worked on capabilities where progress could be measured clearly.
+
+One feature.
+
+One branch.
+
+One test.
+
+One conclusion.
+
+Then move forward.
+
+That rhythm mattered.
+
+It gave the project momentum.
+
+And momentum is valuable when one part of your architecture is still threatening to eat your confidence.
+
+## YouTube Became Its Own Workshop
+
+YouTube was one of the first places where AiDM began growing beyond the simple case.
+
+Downloading one video was not enough.
+
+What about several videos?
+
+What about copied URLs containing useless playlist parameters?
+
+What about progress across a batch?
+
+What about an actual playlist?
+
+What about quality selection?
+
+Each of those questions became a separate step.
+
+The important thing was not that all of them were difficult.
+
+Many were not.
+
+The important thing was that I stopped treating a feature as one giant blob.
+
+Bulk downloading did not arrive fully formed.
+
+First AiDM learned to recognize that several YouTube URLs had been provided.
+
+Then it cleaned the copied links.
+
+Then it gained progress tracking.
+
+Then playlist handling became a separate concept.
+
+Then quality discovery and quality selection arrived.
+
+Each piece was small enough to test.
+
+That was becoming my preferred way to build.
+
+## The Quality Selector That Lied
+
+One of those features taught me another lesson.
+
+The playlist quality selector appeared to work.
+
+AiDM could inspect the playlist and show choices.
+
+1080p.
+
+720p.
+
+360p.
+
+144p.
+
+Choose one.
+
+Simple.
+
+Except it was not simple.
+
+I selected 1080p.
+
+The download completed.
+
+And the resulting video was 360p.
+
+That kind of bug is dangerous because the interface tells you everything is fine.
+
+The program accepted the choice.
+
+The download succeeded.
+
+There was no dramatic crash.
+
+The feature looked complete.
+
+Only the output was wrong.
+
+So I verified it.
+
+The selected quality said 1080p.
+
+The actual file said otherwise.
+
+The feature had passed the eye test and failed reality.
+
+At the time, browser-session restrictions were one possible suspect.
+
+YouTube had already shown signs of anti-bot behavior and sign-in restrictions in other tests.
+
+It would have been easy to blame the external service.
+
+That explanation would even have sounded technically sophisticated.
+
+But much later, I would return to this exact problem and prove something more embarrassing and more useful:
+
+this one was mine.
+
+AiDM had a bug.
+
+That correction would not arrive until September.
+
+For now, the problem remained in the workshop.
+
+## Direct Downloads Learned to Multiply
+
+Direct downloading also grew.
+
+A single link was useful.
+
+Several links exposed a new decision.
+
+Should AiDM download them one after another?
+
+Or all at once?
+
+My first implementation leaned toward parallel execution.
+
+I liked it.
+
+There was something satisfying about giving aria2c multiple jobs and watching them start together.
+
+But then another thought arrived.
+
+Why should I decide permanently for the user?
+
+Some connections benefit from parallel downloads.
+
+Some users may prefer predictable sequential behavior.
+
+Some servers may behave better when jobs are handled one at a time.
+
+So AiDM gained both.
+
+A simple choice:
+
+```text
+Choose Mode: [1/2]
+
+1 - Sequential
+2 - Parallel
+```
+
+Sequential mode kept a meaningful progress counter.
+
+`[1/10]`.
+
+`[2/10]`.
+
+And so on.
+
+Parallel mode did not pretend that the same counter meant anything.
+
+All jobs could begin together.
+
+This seems like a tiny interface decision.
+
+But I liked what it represented.
+
+AiDM was not supposed to force one workflow just because I personally liked it.
+
+Give the user control where the choice is meaningful.
+
+That principle would return later in much harder parts of the project.
+
+## Tested Means Something
+
+By then I had also started developing a stronger idea of what belonged in the stable branch.
+
+A feature was not "done" because the code existed.
+
+It had to survive testing.
+
+Direct bulk detection came first.
+
+Then actual downloading.
+
+Then sequential and parallel modes.
+
+Only after both behaved the way I expected did I feel comfortable treating that part of the downloader as solid.
+
+This was another consequence of the first AiDM.
+
+Premature AiDM had given me quick victories that created false confidence.
+
+The reborn project needed a higher standard.
+
+Working once was evidence.
+
+Working repeatedly was confidence.
+
+And even confidence was not immortality.
+
+A future site, update, dependency, or edge case could still break something.
+
+But at least I wanted every room to have a floor before I painted the walls.
+
+## Git Stopped Being Decoration
+
+As the project expanded, Git also stopped being one of those tools I merely knew existed.
+
+Branches began making sense because I actually needed them.
+
+A YouTube feature could live in one branch.
+
+Direct bulk work could live somewhere else.
+
+Secondary capabilities could be developed without disturbing the known-good mainline.
+
+The branch was no longer an abstract Git concept from a tutorial.
+
+It was a safety boundary.
+
+I could experiment without turning the entire project into an experiment.
+
+That felt liberating.
+
+The same thing happened with commits.
+
+A meaningful commit was not merely a save point.
+
+It was a sentence in the project's history.
+
+*Implemented playlist downloader.*
+
+*Applied bulk direct downloads feature: detection only.*
+
+*Implemented direct downloading modes for bulk.*
+
+Those messages told a story.
+
+Not the emotional story I am writing here.
+
+The engineering story.
+
+And for the first time, I was creating both at once.
+
+## Then Codex Entered the Workshop
+
+There was still friction in how I was writing code.
+
+ChatGPT and I could discuss architecture deeply.
+
+It could suggest functions.
+
+Changes.
+
+Entire code blocks.
+
+But then I had to carry those changes into VS Code manually.
+
+Copy.
+
+Paste.
+
+Find the correct location.
+
+Fix indentation.
+
+Make sure I had not replaced the wrong block.
+
+Return with the error.
+
+Repeat.
+
+For small changes, that was fine.
+
+As AiDM grew, it became annoying.
+
+Then I started using Codex.
+
+That changed the division of labor.
+
+ChatGPT increasingly became the place where I thought.
+
+Architecture.
+
+Tradeoffs.
+
+Plans.
+
+Debugging logic.
+
+Prompts.
+
+Codex became the implementation hand.
+
+Inspect the repository.
+
+Change this file.
+
+Preserve that behavior.
+
+Do not touch unrelated code.
+
+Show what changed.
+
+This was not me disappearing from development.
+
+If anything, it forced me to become more explicit about what I wanted.
+
+An implementation agent is only useful if the instructions are good.
+
+So the better Codex became at editing code, the more important it became for me to understand the architecture well enough to direct it.
+
+## Rules for the Builder
+
+Eventually I formalized those boundaries.
+
+Codex should not redesign the project because it noticed an opportunity.
+
+It should not refactor unrelated code.
+
+It should not casually merge branches.
+
+It should not commit unless asked.
+
+It should preserve existing behavior unless the task required changing it.
+
+Changes should remain small and testable.
+
+That discipline entered the repository itself.
+
+The project gained agent instructions.
+
+In a funny way, AiDM was teaching me management.
+
+Not people management.
+
+Agent management.
+
+I was learning that giving an intelligent tool access to the codebase did not reduce the need for architectural control.
+
+It increased it.
+
+Because now bad instructions could produce bad code much faster.
+
+The tool was powerful.
+
+So the boundaries had to become clearer.
+
+## A Torrent Arrived
+
+Then came another type of download.
+
+A local `.torrent` file.
+
+Outside AiDM, the test was simple:
+
+`aria2c file.torrent`
+
+It worked.
+
+Inside AiDM, the same input was rejected.
+
+Why?
+
+Because AiDM expected HTTP or HTTPS URLs.
+
+This was exactly the kind of failure I wanted the architecture to become good at handling.
+
+The engine could already do the job.
+
+AiDM simply did not yet have the bridge that recognized this input and routed it correctly.
+
+That distinction became important.
+
+**AiDM not supporting an input does not necessarily mean its engines cannot support it.**
+
+Sometimes the capability already exists underneath.
+
+The application just has not learned how to reach it yet.
+
+So torrent support received its own detection path.
+
+Its own function.
+
+Its own route to aria2c.
+
+No need to damage the HTTP path.
+
+No need to invent another downloader.
+
+Just teach AiDM that this new doorway existed and decide which existing room it belonged to.
+
+That was exactly the kind of growth I wanted.
+
+## The House Is Not Supposed to Be Finished
+
+Even now, not every possible room exists.
+
+Magnet links, for example, are still waiting.
+
+And there will be others.
+
+Download types I have not encountered yet.
+
+Protocols I have not needed.
+
+Cases where some website or service produces an input AiDM does not currently understand.
+
+That does not bother me.
+
+In fact, I prefer it.
+
+AiDM should not become a checklist of every feature I can imagine.
+
+That is how software becomes bloated before anyone has proven the features are useful.
+
+I want it to grow from real encounters.
+
+One day I may try to download something unfamiliar.
+
+AiDM may fail.
+
+But the failure might not mean:
+
+*AiDM cannot download this.*
+
+It might mean:
+
+*AiDM has not learned how to connect this type of input to the engine that can.*
+
+That is a very different problem.
+
+And that is exactly where a new room should begin.
+
+## First Ask: Which Engine Owns It?
+
+Every new download type should have to answer one question before code is added:
+
+**Which engine deserves this job?**
+
+Is this really a direct-transfer problem for aria2c?
+
+Does yt-dlp already understand the source and extraction logic?
+
+Is FFmpeg genuinely required?
+
+Does the input need some new parser or adapter before one of those engines can handle it?
+
+Or is the correct answer that AiDM should not support it yet?
+
+That last answer matters too.
+
+Adding support blindly is easy.
+
+Maintaining it is not.
+
+Every new route becomes something future code must understand.
+
+Something tests must protect.
+
+Something documentation must explain.
+
+Something that can break.
+
+So the house will grow slowly.
+
+A room is built when someone needs to live in it.
+
+Not because there is empty land.
+
+## Bridges, Not Replacements
+
+That idea gave me a clearer picture of what AiDM really was becoming.
+
+It was not trying to replace aria2c.
+
+It was not trying to replace yt-dlp.
+
+It was definitely not trying to replace FFmpeg.
+
+Those projects were enormous.
+
+Mature.
+
+Specialized.
+
+AiDM's value lived somewhere else.
+
+Routing.
+
+Coordination.
+
+A consistent workflow.
+
+Bridges.
+
+Take the user's intent.
+
+Understand the input.
+
+Choose the right engine.
+
+Pass the right information.
+
+Keep the rough edges of several excellent tools from becoming the user's problem every time.
+
+That was much closer to the kind of download manager I wanted.
+
+Not a giant engine pretending it could do everything.
+
+A conductor.
+
+The instruments already knew how to play.
+
+AiDM needed to know when each one should enter.
+
+## The Broken Room Was Still Locked
+
+By late August, the house looked very different from the one that existed on August 2.
+
+Bulk direct downloading existed.
+
+Sequential and parallel control existed.
+
+YouTube bulk workflows existed.
+
+Playlist support existed.
+
+Quality selection was being refined.
+
+Torrent support would follow on its own secondary-feature branch.
+
+Git branches had become normal.
+
+Codex had become part of the implementation workflow.
+
+The project was no longer fragile simply because one difficult feature remained unresolved.
+
+That was exactly why I had postponed the browser-side problem.
+
+I needed AiDM to become worth protecting before I attacked the thing most likely to destabilize it.
+
+And eventually I ran out of easier rooms.
+
+I could keep adding features forever.
+
+There would always be another idea.
+
+Another protocol.
+
+Another convenience.
+
+Another menu.
+
+But I knew what I was doing.
+
+I was circling one door.
+
+The same door that had killed the first AiDM.
+
+The repository I had created twenty days earlier was still waiting.
+
+Empty enough to be intimidating.
+
+Necessary enough that I could no longer ignore it.
+
+On August 27, I finally opened the broken room.
+
+And this time, I walked in with tools.
+
+---
+
+*Next: Chapter 9 — Entering the Broken Room*
