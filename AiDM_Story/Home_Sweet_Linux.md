@@ -1288,6 +1288,727 @@ The next challenge was much harder.
 
 Now I had to turn this unfamiliar place into a home.
 
+
 ---
 
-*Next: Chapter 4 — Home Sweet Linux*
+# Chapter 4 — Home Sweet Linux
+
+Linux did not become home because everything suddenly became easy.
+
+It became home because I stopped expecting easy.
+
+That was new.
+
+For most of my life with computers, difficulty had usually been something to remove.
+
+If a program had a cleaner interface, that was better.
+
+If a task required fewer clicks, that was better.
+
+If something "just worked," that was better.
+
+There is nothing wrong with that.
+
+But somewhere during my Master's degree, my relationship with difficulty changed.
+
+I had already spent enough time wrestling with things that refused to make sense immediately.
+
+Research papers.
+
+Machine-learning concepts.
+
+Model architectures.
+
+Training problems.
+
+Python code that looked correct until it wasn't.
+
+Data pipelines.
+
+Experiments that failed after hours of work.
+
+Results that forced me to go back and question assumptions I had been certain about.
+
+The Master's did not make complex things easy.
+
+It taught me that complexity could be survived.
+
+More than that, it taught me something I had never properly learned before:
+
+how to stay with a difficult thing long enough for it to stop being difficult.
+
+That skill followed me into Linux.
+
+## I Was No Longer Afraid of the Learning Curve
+
+Linux came with a learning curve.
+
+Of course it did.
+
+The filesystem was different.
+
+Permissions mattered differently.
+
+Packages came from repositories instead of random setup files.
+
+System services had their own logic.
+
+Configuration often lived in text files.
+
+The terminal was everywhere.
+
+At an earlier stage of my life, that probably would have been enough to send me back to Windows.
+
+But this time I reacted differently.
+
+I was older.
+
+More patient.
+
+And after surviving the intellectual pressure of a Master's degree, learning an operating system no longer felt like some impossible mountain.
+
+It felt like another system waiting to be understood.
+
+That was a major change in me.
+
+I had developed the habit of learning.
+
+Not the school version of learning where you memorize something long enough to reproduce it in an exam.
+
+The other kind.
+
+The kind where you wrestle with a thing.
+
+You get confused.
+
+You form a model of how it works.
+
+The model turns out to be wrong.
+
+You correct it.
+
+You try again.
+
+Eventually your hands start moving before you consciously remember every step.
+
+That process had become familiar.
+
+Linux benefited from it immediately.
+
+## The Interface Was Losing Its Magic
+
+Age changed something else too.
+
+I was no longer impressed by interfaces in the way I had once been.
+
+A flashy menu could still look nice.
+
+Animations could still be pleasant.
+
+A polished application could still be enjoyable.
+
+But they no longer convinced me that I had control.
+
+Sometimes the opposite happened.
+
+A beautiful interface could hide what the program was actually doing.
+
+A button might start a process, but if that process hung halfway through, the interface could leave you staring at a spinner with no idea what was happening underneath.
+
+The command line felt different.
+
+There was less theatre.
+
+You asked for something.
+
+The machine answered.
+
+Sometimes the answer was ugly.
+
+Sometimes it was twenty lines of text you did not understand.
+
+Sometimes it was an error message that looked as though it had been written specifically to ruin your evening.
+
+But it was *information*.
+
+The terminal did not need to pretend everything was fine.
+
+If something failed, it often told you where.
+
+If a process was running, you could inspect it.
+
+If a service was broken, you could query it.
+
+If a file had the wrong permissions, you could see them.
+
+The more time I spent in Linux, the more I started enjoying that rawness.
+
+The CLI stopped looking primitive.
+
+It started looking direct.
+
+And directness was becoming more exciting to me than polish.
+
+## Touching the Raw Power
+
+There was something deeply satisfying about controlling the system through commands.
+
+Not because typing commands made me feel more technical.
+
+That would have been a pretty shallow reason.
+
+What I liked was the precision.
+
+A graphical interface usually shows you the options its designer decided to expose.
+
+The command line often lets you speak much closer to the actual mechanism.
+
+You can combine tools.
+
+Inspect outputs.
+
+Redirect data.
+
+Repeat operations.
+
+Automate things.
+
+Ask the system exactly what it knows.
+
+That feeling was addictive.
+
+The machine stopped feeling like an appliance.
+
+It started feeling like an instrument.
+
+And when you are learning an instrument, the goal is not to memorize every possible note in advance.
+
+The goal is to understand it well enough that your instincts begin to work.
+
+That was how I wanted to learn Linux.
+
+## AI Was a Tutor, Not a Pair of Hands
+
+AI remained beside me through all of this.
+
+Whenever I needed to install something, fix something, inspect something, or understand some strange Linux behavior, I would ask.
+
+But I did not want to become the kind of user who simply copied commands from AI and pressed Enter because the answer looked confident.
+
+That would have defeated the entire point.
+
+Before running a command, I usually looked at it.
+
+What program is this calling?
+
+What flag is being passed?
+
+Which file is being changed?
+
+Why does it need `sudo`?
+
+Where will this install something?
+
+What happens if I want to undo it?
+
+If I could not make basic sense of the command, I asked.
+
+Sometimes I asked AI to explain one command piece by piece.
+
+Sometimes I changed the question entirely:
+
+*Don't just tell me what to run. Tell me what this does.*
+
+That difference mattered.
+
+I was not trying to memorize a dictionary of Linux commands.
+
+Memorization was not the goal.
+
+Understanding the shape of the system was.
+
+I wanted to reach the point where, even if I had never seen a particular command before, something inside me would react.
+
+*This is touching a system directory.*
+
+*This looks like a package-manager operation.*
+
+*That option is recursive; I should be careful.*
+
+*This command is only reading information.*
+
+*This one is changing permissions.*
+
+*Why is sudo needed here?*
+
+Those little instincts were far more valuable than memorizing exact syntax.
+
+Because once instinct exists, a new task is no longer completely new.
+
+It resembles something.
+
+And resemblance is where confidence begins.
+
+## I Refused to Be a Passenger
+
+That became one of my personal rules with AI.
+
+Use it heavily.
+
+Learn from it aggressively.
+
+But do not surrender understanding to it.
+
+AI could save me hours.
+
+It could translate strange errors.
+
+It could point me toward tools I had never heard of.
+
+It could explain what a configuration file was doing.
+
+It could give me a command I might never have discovered quickly on my own.
+
+But if I let it become a magical button that I pressed without thinking, I would still be dependent.
+
+The interface would have changed.
+
+The dependency would not.
+
+I had left Windows partly because I wanted more control over my computer.
+
+It would have been ironic to arrive in Linux and hand that control straight to another black box.
+
+So I kept asking *why*.
+
+That habit would later become extremely important.
+
+Much later, when AiDM became more complicated, the same instinct would show up again and again.
+
+A failure would happen.
+
+An explanation would look convincing.
+
+But instead of accepting it immediately, I would test the assumption.
+
+Isolate variables.
+
+Build a baseline.
+
+Compare behavior.
+
+Ask what the evidence actually proves.
+
+At this stage, though, I was not thinking about software architecture or experiment design.
+
+I was simply learning Linux without wanting to remain helpless inside it.
+
+## Making the Place Mine
+
+Once Windows was gone, customization became less about imitation and more about ownership.
+
+At first, I recreated familiar habits.
+
+Keyboard shortcuts that felt natural.
+
+Desktop behavior I already knew.
+
+Applications that replaced the tools I had used on Windows.
+
+Small interface changes that reduced the feeling of being in foreign territory.
+
+There is no shame in that.
+
+When you move into a new house, you do not throw away every habit from the old one just to prove the move was real.
+
+You put the chair where you like it.
+
+You arrange the desk.
+
+You learn where the switches are.
+
+Then, slowly, the new place develops its own character.
+
+That was Linux Mint for me.
+
+At first I was trying to make it feel less different from Windows.
+
+Then one day I realized I had stopped comparing them.
+
+I was simply using Linux.
+
+## Meeting the Kernel for Real
+
+One of the first reminders that Linux would teach me things whether I asked or not came from the screen itself.
+
+At university, I knew what a kernel was.
+
+Of course I did.
+
+The kernel is the core of an operating system.
+
+It manages hardware.
+
+Processes.
+
+Memory.
+
+Devices.
+
+The theory was familiar.
+
+But theory is wonderfully clean because it cannot flicker your laptop display.
+
+Linux could.
+
+At one point I moved to a newer kernel.
+
+Newer sounded better.
+
+That assumption feels perfectly reasonable until the screen begins behaving as though the laptop is developing a hardware fault.
+
+There was distortion.
+
+Flickering.
+
+Visual instability.
+
+For a moment, the obvious fear arrived:
+
+*Is the screen dying?*
+
+This was exactly the kind of situation that had once made Linux terrifying to me.
+
+Something low-level was wrong.
+
+I did not know whether the cause was hardware, graphics, the operating system, or something I had changed.
+
+But this time I did not retreat.
+
+I investigated.
+
+With AI helping me interpret what I was seeing, I learned a lesson that sounds obvious only after you learn it:
+
+**newer is not automatically better for your hardware.**
+
+The newest kernel was not necessarily the best kernel for my EliteBook.
+
+I moved back to the stable 6.8 series that behaved correctly on the machine.
+
+The display returned to normal.
+
+And suddenly the word *kernel* stopped being a definition from an operating-systems course.
+
+It became something I had actually interacted with.
+
+Something whose version could change how my physical hardware behaved.
+
+That was the difference between knowing a concept academically and knowing it through experience.
+
+Linux kept doing that to me.
+
+It pulled theory out of textbooks and put it on my desk.
+
+## The Fingerprint Sensor Refused to Come Along
+
+Then there was the fingerprint reader.
+
+On Windows, it was ordinary.
+
+Put a finger on the sensor.
+
+Unlock the machine.
+
+Done.
+
+Linux Mint had other ideas.
+
+The built-in fingerprint hardware on the EliteBook was not properly supported in my setup.
+
+Naturally, I tried to solve it.
+
+Drivers.
+
+Libraries.
+
+Projects.
+
+Workarounds.
+
+Reverse-engineering efforts.
+
+If somebody on the internet had made progress with similar hardware, I wanted to know about it.
+
+For days, I explored possibilities.
+
+Some paths looked promising.
+
+Some were unstable.
+
+Some depended on hardware support that simply was not mature enough.
+
+This was one of my first direct encounters with another side of hardware ownership.
+
+You can physically own a device and still not fully control how it works.
+
+If the vendor provides support only for one operating system, the hardware may technically belong to you while an important part of its functionality remains locked behind somebody else's software decisions.
+
+That bothered me.
+
+It deepened my dislike of unnecessary proprietary lock-in.
+
+Not because I decided all proprietary software was evil.
+
+I never believed that.
+
+Developers deserve to be paid.
+
+Companies can make excellent products.
+
+Closed-source software can be useful, polished, and worth buying.
+
+My problem was control.
+
+If I pay for hardware, I dislike the idea that another company can effectively decide which operating system is allowed to use part of it.
+
+Still, philosophy does not make a fingerprint sensor start working.
+
+Eventually I accepted reality.
+
+## The Fingerprint Sacrifice
+
+Some problems are worth solving.
+
+Some become a tax on your life.
+
+The trick is learning the difference.
+
+I had already spent enough time wrestling with the fingerprint reader.
+
+Linux Mint was working beautifully otherwise.
+
+My Master's work was moving.
+
+The machine was fast.
+
+The system was becoming comfortable.
+
+Was I really going to let one sensor decide whether the entire migration had succeeded?
+
+No.
+
+So the fingerprint reader became my first real Linux sacrifice.
+
+In my head, the moment again became slightly more dramatic than necessary.
+
+I put the Linux dagger to the fingerprint sensor.
+
+Sacrificed it.
+
+And created a four-digit PIN.
+
+Problem solved.
+
+Not technically.
+
+Practically.
+
+That distinction was another lesson.
+
+Control does not mean fixing every possible thing.
+
+Sometimes control means deciding that a problem is no longer important enough to own your time.
+
+The fingerprint sensor stayed there in the laptop.
+
+Unused.
+
+A tiny piece of hardware that had lost an argument with my priorities.
+
+## The Machine Became Quiet
+
+As I tuned Linux Mint, another difference became increasingly satisfying.
+
+The machine felt calm.
+
+I kept monitoring CPU and RAM because that habit from my Windows years had never left me.
+
+But this time Task Manager—or rather, Linux's system monitors and terminal tools—stopped feeling like a courtroom.
+
+The numbers were often exactly what I wanted to see.
+
+At one point, after tuning the system, I saw idle memory usage around one gigabyte.
+
+Not six.
+
+Not seven.
+
+Roughly one.
+
+I knew better than to treat lower RAM usage as the single universal measure of operating-system quality.
+
+But emotionally, it felt incredible.
+
+I had spent years trimming Windows, disabling things, removing things, fighting background processes.
+
+Now I was looking at a system that felt naturally closer to the kind of environment I had always been trying to force Windows to become.
+
+Quiet.
+
+Lean.
+
+Responsive.
+
+Mine.
+
+## Linux Became a Workstation
+
+The real test, though, was not idle RAM.
+
+It was work.
+
+My Master's degree increasingly involved machine learning and deep learning.
+
+Python.
+
+TensorFlow.
+
+PyTorch.
+
+Datasets.
+
+Training.
+
+Validation.
+
+Testing.
+
+Evaluation.
+
+Model architectures.
+
+This was no longer casual experimentation.
+
+Linux had to support the thing consuming most of my intellectual energy.
+
+And it did.
+
+Beautifully.
+
+I could build environments.
+
+Install tools.
+
+Run Python.
+
+Train lightweight models directly on the laptop.
+
+Watch CPU and memory behavior.
+
+Work with notebooks and code.
+
+Open research material.
+
+Use browsers, AI assistants, Overleaf, and development tools.
+
+The operating system stopped being the project.
+
+It became the platform for the projects.
+
+That was the moment Linux truly won.
+
+Not when Windows was deleted.
+
+Not when the terminal stopped being scary.
+
+Not when I got idle RAM impressively low.
+
+Linux won when I stopped thinking about the operating system while doing my actual work.
+
+## Home Sweet Linux
+
+Somewhere during all of this, I made a promise to myself.
+
+It was simple.
+
+A little stubborn.
+
+And probably more emotional than technical.
+
+**No matter what, I'll make Linux Mint feel like a home sweet home.**
+
+That sentence became my attitude toward every inconvenience.
+
+A driver problem?
+
+Learn.
+
+A strange command?
+
+Understand it.
+
+A missing application?
+
+Find an alternative.
+
+A workflow that feels unfamiliar?
+
+Adapt it.
+
+A feature that simply cannot be reproduced?
+
+Decide whether I truly need it.
+
+The goal was no longer to prove Linux was perfect.
+
+It wasn't.
+
+The goal was to make it *mine*.
+
+And slowly, almost without noticing, I did.
+
+The terminal that once represented danger became one of my favorite places to work.
+
+The system I once considered too difficult became the environment where I studied, experimented, coded, researched, and relaxed.
+
+Linux had not removed complexity from my life.
+
+It had done something I valued more.
+
+It had made complexity visible enough that I could learn it.
+
+And once I could learn it, I could own it.
+
+The house was no longer unfamiliar.
+
+The tools were on the walls.
+
+The desk was where I wanted it.
+
+I knew which floorboard creaked.
+
+I knew where the switches were.
+
+I knew that some rooms still needed work.
+
+But I was no longer a guest.
+
+Linux Mint had become home.
+
+And once a place becomes home, something else changes.
+
+You stop asking whether you should leave when something is missing.
+
+You start asking whether you can build the missing thing yourself.
+
+I did not know it yet.
+
+But somewhere in that question, three old letters were waiting for me.
+
+IDM.
+
+Soon, they would return with one extra letter in front.
+
+---
+
+*Next: Chapter 5 — Discovering the Open World*
