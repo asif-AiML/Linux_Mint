@@ -5101,7 +5101,570 @@ The next challenge was not detection.
 
 It was judgment.
 
+
 ---
 
-*Next: Chapter 10 — Teaching the Inspector What Matters*
+# Chapter 10 — Teaching the Inspector What Matters
 
+Finding media had felt like the breakthrough.
+
+Then I discovered that finding media could be almost as useless as finding nothing.
+
+A browser page might expose one HLS master playlist.
+
+Or five HLS playlists.
+
+Or one parent playlist plus separate video renditions.
+
+Or separate audio tracks.
+
+Or dozens of direct fragments.
+
+Or hundreds.
+
+The extension had learned to answer:
+
+**Is this media?**
+
+That was no longer enough.
+
+Now it had to answer a harder question:
+
+**Which of these candidates is actually useful?**
+
+That difference sounds small.
+
+It became one of the most important architectural decisions in the entire project.
+
+## Detection Is Not Judgment
+
+The obvious temptation was to make the detector smarter and smarter until it returned only one thing.
+
+The "best" thing.
+
+That would have made the console clean.
+
+It also would have made the architecture dangerous.
+
+Because if the detector threw away the wrong candidate, the evidence was gone.
+
+A filename can be misleading.
+
+A direct file can sometimes be more useful than a manifest.
+
+A child playlist can occasionally be the only working option.
+
+A site can name things badly.
+
+And the browser does not care whether its URLs look neat enough for my heuristics.
+
+So I separated the problems.
+
+Detection would remain conservative.
+
+If something looked like legitimate media, keep it.
+
+Ranking would be a second layer.
+
+Not:
+
+*This is definitely the correct stream.*
+
+But:
+
+*Based on the evidence we currently have, this looks more useful than the others.*
+
+That word mattered.
+
+**Useful.**
+
+Not true.
+
+Not guaranteed.
+
+Not confirmed.
+
+Useful.
+
+The distinction protected the project from pretending to know more than it knew.
+
+## The Console Needed an Opinion
+
+The first ranking model was intentionally simple.
+
+HLS and DASH manifests started higher because they often describe adaptive media structures.
+
+Direct video and audio candidates started lower.
+
+Then structural clues adjusted the score.
+
+A filename containing a clear `master` token was a strong positive clue.
+
+A playlist-like path was a smaller positive clue.
+
+A filename that looked like a specific video rendition—something like `video_720p.m3u8`—received a small penalty.
+
+An obvious audio rendition received a larger one.
+
+Not because audio was bad.
+
+Because if the goal was to hand one candidate to yt-dlp and let it discover the complete playback structure, an audio-only child playlist was usually not the best starting point.
+
+The logic was deliberately modest.
+
+No provider hostnames.
+
+No rule saying:
+
+*If the site is X, choose Y.*
+
+No huge database of website exceptions.
+
+Just structural evidence.
+
+That mattered to me.
+
+I did not want the extension to become another version of premature AiDM—full of special cases that worked until the site changed its clothes.
+
+## Explain the Decision
+
+The ranker did something else I cared about.
+
+It did not return only a number.
+
+It returned the reasons behind the number.
+
+A candidate might effectively say:
+
+- I am HLS, so I start high.
+- My filename contains a master-like token, so I move higher.
+- I look like a video rendition, so I move lower.
+- I look like audio-only, so I move lower still.
+
+The score was not magic.
+
+The evidence was visible.
+
+That matched the way I had learned to use AI and Linux too.
+
+Do not just tell me the answer.
+
+Show me enough of the reasoning that I can inspect whether the answer makes sense.
+
+At first, the console printed the numeric score with an explanation that higher meant "likely more useful."
+
+Then I noticed something funny.
+
+Repeating that explanation beside every candidate made the output technically clear and visually annoying.
+
+So the presentation became simpler:
+
+**HIGH**
+
+**MEDIUM**
+
+**LOW**
+
+The numeric score remained.
+
+The evidence remained.
+
+Only the surface became easier to read.
+
+That was another small lesson.
+
+Good engineering is not only adding information.
+
+Sometimes it is knowing which information should stay visible and which should move one layer deeper.
+
+## StreamWish Taught Me That Several Correct Answers Can Exist
+
+Some pages made ranking feel obviously necessary.
+
+StreamWish was one of them.
+
+The browser could expose multiple HLS candidates.
+
+A master-like playlist.
+
+Other playlists.
+
+Renditions.
+
+They were all media.
+
+The detector was not wrong.
+
+But they were not equally valuable.
+
+If I gave a low-level rendition directly to a downloader, I might get only one piece of the playback structure.
+
+Maybe video without the audio relationship I wanted.
+
+Maybe a specific quality instead of the adaptive parent.
+
+Maybe something technically valid but unnecessarily narrow.
+
+This was the first time the extension began acting less like a flashlight and more like a guide.
+
+It still showed what existed.
+
+But it started saying:
+
+*Look here first.*
+
+## Shaka Taught Me That More Detection Can Be Worse
+
+Then there were pages using players that produced a storm of low-level media activity.
+
+Shaka-based playback was a good teacher.
+
+The browser could request many segments.
+
+Small pieces.
+
+Fragments.
+
+Technically media.
+
+Absolutely real.
+
+And almost completely useless as the primary thing I wanted to hand to AiDM.
+
+If the extension proudly announced every fragment with equal importance, it had technically succeeded and practically failed.
+
+That became one of the clearest lessons from the raw-engine stage:
+
+> **Detection quantity is not detection quality.**
+
+A detector that finds two meaningful candidates can be better than one that prints two hundred correct URLs.
+
+The goal was never to win a counting contest.
+
+The goal was to understand playback well enough to surface something useful.
+
+## Do Not Clean Signed URLs
+
+Real-world testing also reinforced another rule.
+
+Some media URLs looked ugly.
+
+Long query strings.
+
+Tokens.
+
+Expiry timestamps.
+
+Signatures.
+
+CDN parameters.
+
+The instinct to "clean" them was dangerous.
+
+A URL like that is not messy by accident.
+
+Those parameters may be exactly why the request works.
+
+So the extension learned a strict principle:
+
+**preserve the exact observed URL.**
+
+Ranking could inspect structural evidence.
+
+It could decode an embedded path for classification if needed.
+
+But the handoff candidate itself had to remain the real browser-observed request.
+
+Do not strip.
+
+Do not normalize.
+
+Do not rebuild.
+
+Do not beautify.
+
+The browser had already proven that exact request could exist.
+
+My job was not to make it prettier.
+
+My job was to avoid breaking it.
+
+## Evidence Could Hide Inside Another URL
+
+Some pages complicated things further.
+
+The outer request URL could look generic.
+
+Something like:
+
+`/hls?url=<encoded-media-url>`
+
+The actual `.m3u8` evidence lived inside a query parameter.
+
+That raised an architectural question.
+
+Should the extension replace the outer request with the decoded inner media URL?
+
+No.
+
+The inner URL was useful evidence.
+
+The outer URL was the request the browser actually made.
+
+Those are not the same thing.
+
+So the detector learned to use the embedded media path for classification and ranking while preserving the exact outer request for reproduction.
+
+I liked that distinction enormously.
+
+It was another example of the project learning not to confuse:
+
+**evidence about a request**
+
+with:
+
+**the request itself.**
+
+That sounds almost philosophical.
+
+In debugging, it is practical.
+
+## Cinejoy Became the Proof
+
+Ranking theory was nice.
+
+Synthetic examples were nice.
+
+Unit-like checks were nice.
+
+But I wanted a real playback case where ranking changed what I would actually choose.
+
+Cinejoy gave me one.
+
+The extension observed a parent HLS playlist and lower-level video and audio renditions.
+
+The ranking behaved roughly the way I hoped.
+
+The parent playlist landed higher.
+
+The video rendition lower.
+
+The audio rendition lower still.
+
+That alone was encouraging.
+
+But console scores were not enough.
+
+The whole point of ranking was to improve the downstream download.
+
+So I took the higher-ranked parent candidate and passed it to yt-dlp.
+
+yt-dlp inspected the adaptive structure.
+
+It discovered the related streams.
+
+It downloaded the media.
+
+Then I verified the result.
+
+Not by trusting the filename.
+
+Not by trusting yt-dlp's success message.
+
+I used media inspection tools.
+
+ffprobe.
+
+FFmpeg audio analysis.
+
+And the output contained real audio.
+
+That mattered.
+
+Because a lower-level video rendition might have looked perfectly valid while producing a silent result or an incomplete representation of the playback.
+
+For the first time, ranking had proven itself all the way through the chain:
+
+browser traffic
+
+→ candidate detection
+
+→ ranking
+
+→ candidate choice
+
+→ yt-dlp
+
+→ actual media output
+
+→ verification.
+
+That was not just a cleaner console.
+
+That was useful intelligence.
+
+## A Score Is Not Authority
+
+The success of ranking created another danger.
+
+Once a system starts recommending something, it is tempting to let the recommendation become law.
+
+Highest score wins.
+
+Done.
+
+But I did not want that.
+
+The ranking model was heuristic.
+
+Explainable, yes.
+
+Useful, yes.
+
+Perfect, no.
+
+A complete direct file can occasionally be more useful than a manifest.
+
+A strangely named playlist can still be the right one.
+
+A website can break every naming assumption.
+
+And future evidence may show that today's scoring model is wrong in cases I have not seen yet.
+
+So lower-ranked candidates stayed.
+
+The extension was not allowed to erase them simply because the score preferred something else.
+
+That choice would become even more important when the UI arrived.
+
+The engine could recommend.
+
+The user would retain the final choice.
+
+That relationship—machine advice, human authority—felt right.
+
+## Ranking Was Architecture, Not Decoration
+
+By now the raw extension had several distinct layers.
+
+Observe traffic.
+
+Associate it with the intended tab.
+
+Detect media.
+
+Preserve request context.
+
+Rank candidates.
+
+Each layer answered a different question.
+
+That separation protected the project.
+
+If ranking was wrong, detection could still be right.
+
+If detection improved, ranking could consume better evidence without rewriting the network observer.
+
+If UI wording changed later, none of those layers needed to care.
+
+This was a kind of architecture I would not have designed during premature AiDM.
+
+Back then, I would probably have written one function that found a URL and called it done.
+
+Now I was increasingly comfortable letting a system admit uncertainty.
+
+Keep evidence.
+
+Rank it.
+
+Explain why.
+
+Allow correction.
+
+That was a much more mature form of control.
+
+## The Inspector Was Learning Restraint
+
+One of the strangest things about the project was that progress often meant **doing less**.
+
+Do not intercept response bodies if passive observation is enough.
+
+Do not hardcode provider names if structural evidence works.
+
+Do not throw away low-ranked candidates.
+
+Do not rewrite signed URLs.
+
+Do not assume a cookie is required just because one successful command included it.
+
+Do not pretend a score proves a manifest role.
+
+Do not let one failed reproduction dictate the architecture.
+
+Do not build a downloader inside the extension.
+
+Every one of those "do nots" narrowed the design.
+
+And the narrower the design became, the more trustworthy it felt.
+
+That was a new kind of confidence for me.
+
+Not confidence because the system did everything.
+
+Confidence because I knew what it intentionally refused to claim.
+
+## Then Another Kind of Noise Appeared
+
+Media ranking solved one category of confusion.
+
+It did not solve all of them.
+
+The browser was carrying more than video and audio.
+
+There were timed-text resources too.
+
+`.vtt`.
+
+`.srt`.
+
+Other subtitle-like formats.
+
+At first, that seemed easy.
+
+A VTT file is a subtitle.
+
+Detect it.
+
+Done.
+
+Then real websites taught me another lesson.
+
+Some VTT files were not dialogue at all.
+
+They were thumbnail timelines.
+
+Storyboards.
+
+Preview data.
+
+Technically timed text.
+
+Practically useless as subtitles.
+
+The pattern was familiar now.
+
+First the extension had learned:
+
+**not every media candidate is equally useful.**
+
+Next it would have to learn:
+
+**not every subtitle-looking file is actually a subtitle.**
+
+The Inspector had learned to judge streams.
+
+Now it had to learn what else belonged to the playback.
+
+---
+
+*Next: Chapter 11 — More Than Video*
