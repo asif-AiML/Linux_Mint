@@ -6292,6 +6292,699 @@ For once, I had actually kept that promise.
 
 The engine had earned its interface.
 
+
 ---
 
-*Next: Chapter 12 — From Engine to Extension*
+# Chapter 12 — From Engine to Extension
+
+The raw engine had earned its interface.
+
+That sentence mattered because I had spent the entire second life of AiDM trying not to repeat one old mistake:
+
+do not decorate an unfinished machine.
+
+The first AiDM had reached for visible software too early.
+
+A window.
+
+An input box.
+
+Something that *looked* like a product.
+
+The second attempt had been much more patient.
+
+For weeks, Stream Inspector had lived where ordinary users should never have to live.
+
+The browser console.
+
+That ugly place had been useful.
+
+It had shown me everything.
+
+Raw requests.
+
+Candidate types.
+
+Scores.
+
+Evidence.
+
+Headers.
+
+Target-tab changes.
+
+Subtitle detections.
+
+Title hypotheses.
+
+Mistakes.
+
+Floods.
+
+Corrections.
+
+The console was where the extension learned to think.
+
+Now the problem was different.
+
+A thinking engine hidden inside DevTools was still not a usable companion to AiDM.
+
+It needed a face.
+
+## The UI Was Not Allowed to Become a Second Brain
+
+The easiest mistake would have been to let the popup repeat the engine's work.
+
+Detect media again.
+
+Rank candidates again.
+
+Reconstruct state from logs.
+
+Infer which subtitle belonged where.
+
+That might have worked for a while.
+
+It also would have created two systems that could disagree.
+
+So I wanted one source of truth.
+
+The raw engine would observe and decide.
+
+The UI would read.
+
+That led to a normalized playback state.
+
+A single model of what the extension currently believed about the page.
+
+Which tab is the target?
+
+What is the playback identity?
+
+What is the current title?
+
+What media candidates exist?
+
+Which one is ranked highest?
+
+Which one has the user selected?
+
+What subtitles are real?
+
+Which subtitles are selected?
+
+What request context belongs to the chosen media?
+
+The popup did not need to become intelligent.
+
+It needed to display intelligence faithfully.
+
+That separation was one of the cleanest architectural decisions in the extension.
+
+## What Am I Watching?
+
+The UI had to answer a few human questions quickly.
+
+Not:
+
+*How many webRequest events have fired?*
+
+Not:
+
+*What ranking evidence codes were produced?*
+
+Not:
+
+*What request ID generated this header observation?*
+
+A normal person does not care.
+
+The useful questions were much simpler.
+
+**What am I watching?**
+
+**What useful media did you find?**
+
+**What subtitles did you find?**
+
+**Which stream do you recommend?**
+
+**Can I send this to AiDM?**
+
+That became the shape of the popup.
+
+Title near the top.
+
+Best candidate visible.
+
+Alternatives available but not screaming for attention.
+
+Real subtitles listed normally.
+
+Diagnostic junk kept out of the way.
+
+Request context summarized instead of dumped.
+
+The interface was beginning to translate all the raw-engine intelligence into something a person could actually use.
+
+## Best Does Not Mean Mandatory
+
+The ranking system naturally produced a best candidate.
+
+So the UI could highlight it.
+
+That part was easy.
+
+The more important decision was what happened next.
+
+Should the user be forced to accept it?
+
+No.
+
+That would have violated the philosophy I had already developed in the engine.
+
+Ranking was advice.
+
+Not authority.
+
+So the state model separated:
+
+`bestCandidateId`
+
+from:
+
+`selectedCandidateId`
+
+The best candidate was the engine's recommendation.
+
+The selected candidate was the user's decision.
+
+They might be the same.
+
+Usually they would be.
+
+But they did not have to be.
+
+That small distinction carried a lot of meaning.
+
+I had spent years leaving systems that wanted to decide too much for me.
+
+I was not going to build the same attitude into my own tool.
+
+The software could say:
+
+*I think this one is best.*
+
+The user could still say:
+
+*No. Give me that one.*
+
+## Subtitles Became a Choice Too
+
+The same principle applied to subtitles.
+
+If Stream Inspector discovered real subtitles, they could be selected by default.
+
+That was convenient.
+
+But the user might not want them.
+
+Maybe they only want the media.
+
+Maybe there are several languages.
+
+Maybe one subtitle track is unnecessary.
+
+So the UI allowed subtitles to be selected or deselected.
+
+All of them.
+
+Some of them.
+
+None of them.
+
+Again, the engine could discover.
+
+The interface could recommend a sensible starting state.
+
+The user retained control.
+
+That pattern was becoming one of the project's quiet signatures.
+
+## The Popup Had a Memory Problem
+
+Then the browser reminded me that interfaces have lifecycles too.
+
+A browser-extension popup is temporary.
+
+Open it.
+
+Close it.
+
+Gone.
+
+That is normal.
+
+But the playback knowledge should not vanish just because the user closed a tiny window.
+
+Imagine starting a video.
+
+Letting Stream Inspector observe the useful requests.
+
+Opening the popup.
+
+Closing it accidentally.
+
+Opening it again.
+
+And seeing nothing.
+
+That would mean the user had to replay the media just to rebuild the UI.
+
+Unacceptable.
+
+Chromium made this harder because the background service worker itself could also go to sleep.
+
+The same lesson from the earlier target-tab bug returned in a different form:
+
+**temporary process lifetime must not define truth.**
+
+So the extension began retaining the current playback state in session-scoped browser storage.
+
+Not permanent history.
+
+Not a database of everything the user watched.
+
+Just enough session memory to survive popup closure and background suspension.
+
+That distinction mattered.
+
+## Remember, But Do Not Haunt
+
+Persistence creates its own danger.
+
+If the extension remembers too aggressively, stale playback can follow the user around.
+
+Watch Movie A.
+
+Switch tabs.
+
+Open Movie B.
+
+Then reopen the extension and discover that Movie A has somehow returned from the dead.
+
+No.
+
+The state needed boundaries.
+
+Same target tab?
+
+Same playback identity?
+
+Restore.
+
+Target changed?
+
+Reset.
+
+Navigation changed?
+
+Reset.
+
+Target tab closed?
+
+Reset.
+
+Return later to an old tab after having moved elsewhere?
+
+Do not resurrect old capture automatically.
+
+Require fresh observations.
+
+This was another example of a feature becoming useful only after its limits were designed.
+
+Remember enough to help.
+
+Forget enough to stay honest.
+
+## Focus Is Not Identity
+
+Brave taught another lesson here.
+
+A browser can temporarily lose operating-system focus for harmless reasons.
+
+Click the desktop.
+
+Press a media key.
+
+Alt-Tab.
+
+Open the extension popup itself.
+
+Chromium can even emit transient states where there appears to be no focused normal window.
+
+If the extension treated every focus loss as:
+
+*The user changed playback target.*
+
+then valid state would be flushed constantly.
+
+So the rule became clearer:
+
+**browser focus is not playback identity.**
+
+The active playback tab remains the target until a genuine target change occurs.
+
+That sounds obvious when written in a sentence.
+
+It took real browser behavior to make it obvious in the architecture.
+
+## "Captured Two Minutes Ago"
+
+Session retention introduced another human question.
+
+How fresh is this data?
+
+Signed media URLs can expire.
+
+Tokens can become invalid.
+
+A request captured ten seconds ago feels different from one captured an hour ago.
+
+The extension could not honestly promise that an old signed URL was still valid.
+
+It had no universal way to know.
+
+So instead of pretending to know, the popup exposed capture age.
+
+Just now.
+
+Two minutes ago.
+
+One hour ago.
+
+Information.
+
+Not a guarantee.
+
+The UI was learning the same discipline as the engine:
+
+show what you know.
+
+Do not claim what you do not.
+
+## The Last Big Question: How Do We Hand It Over?
+
+By then the popup could present the playback beautifully enough.
+
+But Stream Inspector still had one fundamental purpose.
+
+It existed because AiDM needed information from inside the browser.
+
+Eventually, the two systems had to meet.
+
+The obvious dream was automatic integration.
+
+Click a button.
+
+The extension talks directly to AiDM.
+
+Download begins.
+
+Beautiful.
+
+Also dangerous to build too early.
+
+Automatic browser-to-native communication would introduce an entire new category of architecture.
+
+Native messaging.
+
+Transport contracts.
+
+Installation paths.
+
+Permissions.
+
+Version compatibility.
+
+Failure handling.
+
+Security boundaries.
+
+Browser differences.
+
+All before I had even proven exactly what the handoff contract should contain.
+
+That felt backwards.
+
+So I chose the less glamorous path.
+
+Clipboard.
+
+## Copy for AiDM
+
+The beta handoff would have one primary action:
+
+**Copy for AiDM**
+
+Not:
+
+Copy URL.
+
+Copy User-Agent.
+
+Copy Referer.
+
+Copy subtitle.
+
+Copy title.
+
+Five buttons would expose implementation details and force the user to rebuild the request manually.
+
+The extension already had structured state.
+
+It knew the selected media.
+
+Selected subtitles.
+
+Title.
+
+Useful request context.
+
+So one button should produce one handoff.
+
+The output would be a shell-safe argument fragment.
+
+Something that could be pasted after:
+
+`python aidm.py`
+
+The extension would not download.
+
+It would not execute AiDM.
+
+It would not silently put sensitive data onto the clipboard.
+
+The user would explicitly ask for the handoff.
+
+Again, restraint.
+
+## The Shell Became a Contract
+
+That decision created an interesting design problem.
+
+Browser-derived values are hostile to careless shell construction.
+
+Spaces.
+
+Ampersands.
+
+Question marks.
+
+Dollar signs.
+
+Quotes.
+
+Apostrophes.
+
+Signed URLs full of punctuation.
+
+A movie title such as:
+
+`John's Movie`
+
+can break naive quoting immediately.
+
+So the exporter needed one consistent POSIX-shell quoting strategy.
+
+Every dynamic value went through the same protection.
+
+The result could look ugly.
+
+That was fine.
+
+Correctness mattered more than beauty.
+
+And there was another advantage.
+
+The handoff did not need to belong permanently to the terminal.
+
+A future AiDM GUI could accept the exact same text and parse it with argv-like semantics.
+
+Terminal:
+
+shell turns text into arguments.
+
+Future GUI:
+
+Python `shlex.split()` turns text into arguments.
+
+Same contract.
+
+Same downstream parser.
+
+That was elegant.
+
+The CLI was not becoming a dead end.
+
+It was becoming the first interface to a reusable boundary.
+
+## Do Not Build the Bridge Twice
+
+That decision also protected the future.
+
+If I later built a GUI, I did not want:
+
+one parser for terminal users
+
+and another parser for GUI users.
+
+That is how software slowly creates two truths.
+
+Instead, Stream Inspector would speak one language.
+
+AiDM would understand one argument model.
+
+Whatever interface existed in between could translate into that same structure.
+
+The architecture was beginning to align across repositories before the repositories had even physically joined.
+
+At least, that was the plan.
+
+## Another Future Shadow
+
+And here again, writing this story while development continues creates a strange echo.
+
+Earlier in this book, I mentioned that something from the future had reached its first beta milestone while I was writing about AiDM's resurrection.
+
+That beta milestone was not the end.
+
+After finishing the browser-side work, I returned to the downloader.
+
+The obvious next task sounded simple:
+
+*make AiDM accept what the extension produces.*
+
+It was not simple.
+
+The downloader had spent weeks growing through isolated feature branches on purpose.
+
+YouTube intelligence lived in one history.
+
+Torrent support in another.
+
+Streaming logic in another.
+
+Bulk routing had already reached the stable line.
+
+The branches had protected the project beautifully while features were being built.
+
+Now those same walls had to come down carefully.
+
+I will not tell that story here.
+
+It belongs later.
+
+But while writing this chapter, another milestone was reached somewhere ahead of the reader:
+
+the scattered rooms of AiDM were brought under one roof without simply flattening their histories into each other.
+
+The central router had to be reconciled semantically.
+
+A merge conflict could not be solved by choosing "ours" or "theirs."
+
+Existing routing intelligence had to survive.
+
+Feature-specific architecture had to survive.
+
+The whole structure had to be tested route by route.
+
+And only after that could the future handoff have a stable place to land.
+
+The strange part is that the architecture built months earlier had prepared for exactly this kind of reunion.
+
+Branches had separated the work.
+
+Tests had protected behavior.
+
+Documentation had preserved intent.
+
+What once looked like fragmentation had become something that could be reconstructed deliberately.
+
+The house was learning how to become one building again.
+
+But that is a future chapter.
+
+For now, back in September's earlier days, the browser companion was only just receiving its face.
+
+## The Engine Finally Looked Back at Me
+
+There is a satisfying moment when internal machinery becomes visible in a useful way.
+
+Not flashy.
+
+Not finished.
+
+But coherent.
+
+The title appeared.
+
+The best media candidate appeared.
+
+Alternatives were available.
+
+Real subtitles appeared.
+
+Request context could be summarized.
+
+Selections could be changed.
+
+State could survive the popup disappearing.
+
+And one button could prepare everything for AiDM.
+
+For weeks, I had been reading the extension through console logs.
+
+Now the extension could explain itself without asking me to open DevTools.
+
+The raw engine had become a browser extension in the human sense of the phrase.
+
+Not merely code running inside a browser.
+
+A tool someone could actually interact with.
+
+But there was still one uncomfortable truth.
+
+Most of this development had happened with Firefox as the primary battlefield.
+
+The architecture claimed Chromium support too.
+
+Brave had already taught me several lifecycle lessons.
+
+Now the UI itself had to prove that the claim was real.
+
+And browsers have a habit of waiting until you feel confident before reminding you that "cross-browser" is not the same thing as "works on my browser."
+
+---
+
+*Next: Chapter 13 — Two Browser Worlds*
