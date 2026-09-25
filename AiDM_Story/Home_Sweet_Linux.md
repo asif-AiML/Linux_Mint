@@ -7552,6 +7552,806 @@ And now there was only one thing left to prove.
 
 Could the house finally use the door?
 
+
 ---
 
-*Next: Chapter 14 — The First Handshake*
+# Chapter 14 — The First Handshake
+
+For nearly two months, I had been building two halves of one idea.
+
+One half lived in the browser.
+
+It watched.
+
+Observed.
+
+Ranked.
+
+Remembered.
+
+Collected the pieces that ordinary downloaders could not see by themselves.
+
+The other half lived in the terminal.
+
+It classified.
+
+Routed.
+
+Delegated.
+
+Downloaded.
+
+Protected the different engines from stepping on each other's responsibilities.
+
+They had been designed for each other.
+
+Documented for each other.
+
+Named for each other.
+
+But until September 25, 2026, they had never truly met.
+
+Architecture is not complete because two diagrams line up.
+
+At some point, the wire has to carry current.
+
+That day finally came.
+
+## Before the Handshake, the House Had to Become One
+
+There was one final problem before Stream Inspector data could enter AiDM safely.
+
+AiDM itself was scattered.
+
+That was not an accident.
+
+It was the result of doing things carefully.
+
+YouTube work lived on its own branch.
+
+Torrent support lived on another.
+
+Streaming had its own history.
+
+Bulk direct downloading had already reached the stable line.
+
+Each branch had protected a different experiment.
+
+That separation had been useful while the rooms were being built.
+
+Now I needed one front door.
+
+The Stream Inspector handoff could not arrive at a downloader whose routing intelligence still existed in several parallel histories.
+
+So before I connected the extension, I had to unify AiDM.
+
+Not by dumping everything together.
+
+By reconciling it.
+
+## The Integration Branch
+
+I created:
+
+`integration/aidm-unified-router`
+
+The name was intentionally boring.
+
+This was not a feature branch.
+
+It was a reconstruction branch.
+
+Its purpose was to take the intelligence that had been distributed across AiDM's development history and build one authoritative routing baseline.
+
+Main stayed protected.
+
+That mattered.
+
+I did not want a merge experiment happening directly on the branch I considered stable.
+
+So the integration branch became a temporary operating theatre.
+
+One branch entered at a time.
+
+One capability at a time.
+
+Test.
+
+Then continue.
+
+## Clean the Battlefield First
+
+Before merging streaming back in, I cleaned it.
+
+The old streaming branch still carried pieces from an earlier era.
+
+Legacy pipe-delimited input.
+
+Manual movie-title prompts.
+
+Assumptions that belonged to the time before Stream Inspector had a real export contract.
+
+Those things had once been useful.
+
+Now they were architectural fossils.
+
+So they were removed.
+
+What mattered stayed.
+
+Plain HLS and DASH support.
+
+`StreamInput`.
+
+Header plumbing.
+
+Stream detection.
+
+yt-dlp routing.
+
+Optional title support.
+
+The old battlefield was cleaned before it was brought back into the unified system.
+
+That was important.
+
+Integration should not mean preserving every historical mistake forever.
+
+## The Rooms Came Back One by One
+
+Torrent support came in.
+
+Direct single remained intact.
+
+Bulk direct remained intact.
+
+Sequential remained intact.
+
+Parallel remained intact.
+
+Then YouTube arrived.
+
+And this time Git did exactly what Git is supposed to do.
+
+It stopped me.
+
+There was a conflict in the central router.
+
+`aidm.py`.
+
+The dangerous file.
+
+The place where one wrong choice could make one feature work by silently breaking three others.
+
+I could not solve that conflict by clicking:
+
+"accept current."
+
+Or:
+
+"accept incoming."
+
+Both sides were right about different things.
+
+The solution had to be semantic.
+
+Keep the routing intelligence that already worked.
+
+Add the YouTube behavior that belonged there.
+
+Preserve torrent-first handling.
+
+Preserve direct bulk.
+
+Preserve playlist-before-video ordering.
+
+Preserve generic fallback.
+
+Keep multi-input behavior honest.
+
+The merge conflict was not a nuisance.
+
+It was the repository asking a question:
+
+**What does AiDM mean now?**
+
+I had to answer it deliberately.
+
+## Nine Routes
+
+After the YouTube reconciliation, I tested the unified router.
+
+Not one happy path.
+
+A matrix.
+
+Nine routes.
+
+Single YouTube.
+
+YouTube bulk.
+
+YouTube playlist.
+
+Single direct.
+
+Direct bulk.
+
+Torrent.
+
+Naked HLS/DASH.
+
+Generic yt-dlp fallback.
+
+Mixed or invalid input behavior.
+
+The goal was not merely:
+
+*Did something download?*
+
+I also inspected the routing output.
+
+Did AiDM classify the input correctly?
+
+Did it choose the correct path?
+
+A successful download through the wrong route can be a hidden bug.
+
+The routing itself had to be right.
+
+The suite passed.
+
+Then the cleaned streaming branch came back in.
+
+And I ran the full matrix again.
+
+Passed again.
+
+The house was one building.
+
+Now the new door could be installed.
+
+## Teach AiDM the Extension's Language
+
+Stream Inspector's clipboard output was already defined.
+
+It could provide:
+
+`--user-agent`
+
+`--referer`
+
+`--subtitle`
+
+`--title`
+
+and one selected media URL.
+
+AiDM needed to understand that without confusing those values with ordinary URLs.
+
+So the router changed.
+
+Argument parsing became a proper stage.
+
+The Stream Inspector fields entered the parser.
+
+Then a dedicated function turned them into a normalized internal object.
+
+`StreamInput`.
+
+That object now carried more than a URL.
+
+It could carry:
+
+- headers,
+- title,
+- subtitles,
+- stream type.
+
+The extension spoke in command-line arguments.
+
+AiDM translated those arguments into its own internal language.
+
+That was the bridge.
+
+## The First Test Had to Fail
+
+There is a reason the first successful handshake means so much to me.
+
+I had a baseline.
+
+Of course I did.
+
+By then, I would have been disappointed in myself if I did not.
+
+The same streaming session was tested first with the naked HLS URL.
+
+No extension context.
+
+No browser knowledge.
+
+Just the media URL.
+
+It failed.
+
+That failure was valuable.
+
+Because now the next test could prove something.
+
+Not merely:
+
+*AiDM can download this stream.*
+
+But:
+
+*Does the browser context actually make the difference?*
+
+That is a much stronger experiment.
+
+## Copy
+
+I opened the media in the browser.
+
+Stream Inspector watched.
+
+The extension identified the useful candidate.
+
+It had the title.
+
+The captured User-Agent.
+
+The captured Referer.
+
+The browser-side intelligence that had taken weeks to build was now sitting behind one button.
+
+**Copy for AiDM**
+
+Click.
+
+Copied.
+
+That tiny action represented the entire extension.
+
+Then I went to the terminal.
+
+The place I had once feared when I first considered Linux.
+
+The place that had eventually become my favorite place to work.
+
+And I pasted.
+
+The two projects were finally facing each other.
+
+## AiDM Understood
+
+The command entered AiDM.
+
+The argument parser recognized that this was not an ordinary naked URL.
+
+This was a Stream Inspector handoff.
+
+The values were normalized into `StreamInput`.
+
+The headers stayed attached to the media.
+
+The title stayed attached to the playback.
+
+Then AiDM did what I had spent months teaching it to do.
+
+Classify before downloading.
+
+The stream probe ran.
+
+The result appeared:
+
+`Input type: HLS stream`
+
+Then:
+
+`Extractor/downloader: yt-dlp native`
+
+Then:
+
+`Post-processing: FFmpeg when required`
+
+The route was correct.
+
+That alone felt good.
+
+But classification was not the goal.
+
+The real question was whether the browser-derived context would survive the entire path.
+
+## 1,371
+
+yt-dlp accepted the request.
+
+It parsed the HLS playlist.
+
+Then the terminal printed:
+
+`[hlsnative] Total fragments: 1371`
+
+I remember the significance of that number more than the number itself.
+
+The naked URL had failed.
+
+The same playback, with the context observed by my extension and carried through AiDM, had reached the playlist successfully.
+
+One thousand three hundred and seventy-one fragments.
+
+The stream was real.
+
+The bridge was real.
+
+The architecture was not theoretical anymore.
+
+Then yt-dlp created the destination using the title that had come from the browser page.
+
+And the download began.
+
+That was enough.
+
+The estimated file size was around three gigabytes.
+
+I did not need to download the entire movie to prove the handshake.
+
+By the time the first fragment started moving, the experiment had already answered the question.
+
+Browser.
+
+Stream Inspector.
+
+AiDM.
+
+yt-dlp.
+
+Media fragments.
+
+The current had crossed the wire.
+
+## The Two-Month Moment
+
+I had been waiting for that moment for roughly two months.
+
+Two months of:
+
+building,
+
+testing,
+
+breaking,
+
+reading,
+
+thinking,
+
+rewriting,
+
+branching,
+
+merging,
+
+researching,
+
+comparing baselines,
+
+running ablations,
+
+watching browser consoles,
+
+arguing with assumptions,
+
+and repeatedly refusing to let one failure become the final explanation.
+
+Premature AiDM had died at exactly this kind of problem.
+
+A stream worked in the browser.
+
+Failed outside it.
+
+The difference looked like a wall.
+
+Now I was watching the same class of problem behave completely differently.
+
+Not because the server had become easier.
+
+Because I finally understood enough of the path.
+
+The browser knew something.
+
+My extension observed it.
+
+AiDM preserved it.
+
+yt-dlp used it.
+
+That was the missing bridge.
+
+## Then the Subtitle Walked Across Too
+
+The main media handshake was not the end of that day's work.
+
+There was still another piece of the playback sitting on the browser side.
+
+Subtitles.
+
+Stream Inspector could already discover real subtitle candidates and allow the user to select them.
+
+Now AiDM learned to receive one of those subtitle sidecars too.
+
+The subtitle URL came through the same handoff.
+
+AiDM downloaded it separately.
+
+But naming mattered.
+
+A media player like VLC can automatically associate a subtitle with a video when the two files share the same base name.
+
+That was exactly the behavior I wanted.
+
+So the extension-provided title became more than cosmetic metadata.
+
+It became the shared identity.
+
+Main media:
+
+`Movie Title.mp4`
+
+Subtitle:
+
+`Movie Title.vtt`
+
+Same base name.
+
+Same playback.
+
+Put them in the same folder and the player can naturally recognize the relationship.
+
+That small detail felt satisfying because it completed the user-facing logic.
+
+The browser knew the human title.
+
+AiDM used that knowledge to make the downloaded pieces belong together.
+
+## Nothing Else Was Allowed to Break
+
+There was still one final standard.
+
+The handshake could not be considered a victory if it destroyed the rest of AiDM.
+
+This had always been the danger of integration.
+
+Fix one grand feature.
+
+Break five boring ones.
+
+So the old rooms had to be checked again.
+
+Single YouTube.
+
+YouTube bulk.
+
+YouTube playlists.
+
+Direct single.
+
+Direct bulk.
+
+Sequential.
+
+Parallel.
+
+Torrent.
+
+Naked streams.
+
+Generic fallback.
+
+The browser-assisted path had to become one more route.
+
+Not the route that swallowed everything.
+
+That distinction is central to what AiDM became.
+
+Stream Inspector is not mandatory.
+
+If a naked HLS URL works, use it.
+
+If a direct file exists, aria2c should still own it.
+
+If YouTube is being downloaded, use the YouTube workflow.
+
+If a torrent file appears, route it to aria2c.
+
+The extension exists for the cases where browser context actually matters.
+
+Nothing more.
+
+Nothing less.
+
+## The Manual Handshake Was Intentional
+
+There is another detail I want preserved.
+
+The first handshake is manual.
+
+On purpose.
+
+The user clicks:
+
+**Copy for AiDM**
+
+Then pastes into the terminal.
+
+A polished product might hide that step.
+
+Eventually, maybe AiDM will too.
+
+But for beta, I like the manual bridge.
+
+It is visible.
+
+Inspectable.
+
+Debuggable.
+
+If something fails, I can see exactly what crossed from one side to the other.
+
+No native messaging layer to blame.
+
+No hidden transport.
+
+No extra daemon.
+
+No automatic execution.
+
+The contract gets proven before the transport becomes clever.
+
+That is the same philosophy that shaped almost everything else in the project.
+
+Engine before UI.
+
+Baseline before claim.
+
+One branch before merge.
+
+One route before abstraction.
+
+Prove the thing.
+
+Then polish it.
+
+## The Thing I Wanted on Windows
+
+At some point during the successful handshake, I realized how far the story had folded back on itself.
+
+Years earlier, IDM had felt magical because the browser could reveal a download with one convenient action.
+
+I had never understood what was happening underneath.
+
+I only knew:
+
+the browser sees something,
+
+IDM understands it,
+
+the download begins.
+
+Now I had built my own version of that relationship on Linux.
+
+Not the same implementation.
+
+Not the same product.
+
+Not the same maturity.
+
+But the conceptual chain was finally there.
+
+The browser sees.
+
+Stream Inspector understands enough of what it sees.
+
+AiDM understands the handoff.
+
+The correct engine downloads.
+
+And the user does not need to reconstruct the whole network request manually.
+
+That was the capability I had missed.
+
+That was the reason the first AiDM had existed.
+
+That was the reason the first AiDM had died.
+
+And now it worked.
+
+## AiDM Was No Longer Being Born
+
+There is a point in a project where the question changes.
+
+At first:
+
+*Can I build this?*
+
+Then:
+
+*Can I make it work?*
+
+Then:
+
+*Can I make the pieces work together?*
+
+September 25 answered that third question.
+
+From here, the work becomes different.
+
+Stress tests.
+
+Edge cases.
+
+Bugs.
+
+Fixes.
+
+Regression tests.
+
+New download types.
+
+New bridges when real scenarios justify them.
+
+Maybe magnet links one day.
+
+Maybe something I have not encountered yet.
+
+Maybe a website that teaches AiDM another lesson.
+
+The house is not finished forever.
+
+It is simply inhabitable.
+
+That is a much better milestone.
+
+## Tomorrow
+
+At the time I am writing this chapter, one final ritual remains.
+
+Stress testing.
+
+If the integration branch survives, it will merge into `main`.
+
+Then AiDM can receive its own beta tag.
+
+That moment has not happened yet.
+
+I will not write it as though it has.
+
+This book has spent too much time learning the value of evidence for me to fake the final test just because the ending would look cleaner.
+
+So Chapter 14 ends exactly where the project actually stands tonight.
+
+The extension has reached beta.
+
+The downloader has reached a feature-complete beta-candidate architecture.
+
+The first real browser-to-downloader handshake has succeeded.
+
+Media works.
+
+Browser context works.
+
+Title handoff works.
+
+Subtitle sidecars work.
+
+The old routes still work.
+
+Tomorrow, the house gets inspected one more time before I put the beta sign on the door.
+
+And for perhaps the first time in this entire story, I am not wondering whether AiDM can survive.
+
+I am wondering what it will encounter next.
+
+---
+
+*Next: Present Day — The House Is Alive*
