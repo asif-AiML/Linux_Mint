@@ -6985,6 +6985,573 @@ Now the UI itself had to prove that the claim was real.
 
 And browsers have a habit of waiting until you feel confident before reminding you that "cross-browser" is not the same thing as "works on my browser."
 
+
 ---
 
-*Next: Chapter 13 — Two Browser Worlds*
+# Chapter 13 — Two Browser Worlds
+
+By the time the popup existed, I had something dangerous.
+
+Confidence.
+
+Firefox was working.
+
+The raw engine had survived weeks of testing there.
+
+The popup could read the playback state.
+
+Candidates appeared.
+
+Titles appeared.
+
+Subtitles appeared.
+
+Selections worked.
+
+The interface finally looked like the thing I had imagined when I created the repository.
+
+For a moment, it was tempting to think the hard part was over.
+
+Then I opened Brave.
+
+And the popup looked back at me as if nothing existed.
+
+## The Engine Was Alive
+
+That was the strange part.
+
+The extension was not dead.
+
+Far from it.
+
+The background console was still doing its job.
+
+Best HLS candidate?
+
+Detected.
+
+Ranking?
+
+Working.
+
+Subtitles?
+
+Detected.
+
+Title?
+
+Detected.
+
+The raw engine could see the playback.
+
+The intelligence was there.
+
+Only the popup said:
+
+**No active browser tab available.**
+
+That message was almost insulting.
+
+I was literally standing on the active browser tab.
+
+The engine knew what I was watching.
+
+The UI behaved as if the browser had vanished.
+
+This was exactly the kind of bug that can tempt you into changing the wrong thing.
+
+The visible failure was in the popup.
+
+The instinctive reaction could have been:
+
+*Something is wrong with the detector.*
+
+But the detector was producing evidence in front of me.
+
+So the problem had to be somewhere else.
+
+Target identity.
+
+State transfer.
+
+Browser lifecycle.
+
+The path between a working engine and a blind interface.
+
+## Protect the Working World
+
+Firefox mattered here.
+
+It was already working.
+
+That meant I had something worth protecting.
+
+Earlier in my development life, I might have opened the same branch and started changing whatever looked suspicious.
+
+Fix Brave.
+
+Reload Firefox.
+
+Break Firefox.
+
+Fix Firefox.
+
+Break Brave again.
+
+Repeat until I no longer knew which change had caused what.
+
+This time I did not want that.
+
+The known-good Firefox UI lived on:
+
+`dev/04-ui-architecture`
+
+So I created another branch:
+
+`fix/brave-ui-active-tab`
+
+That branch had one job.
+
+Find out why Brave's popup could not recognize the active target while the engine clearly could.
+
+Nothing else.
+
+That simple decision represented everything Git had slowly taught me.
+
+A branch is not bureaucracy.
+
+It is permission to investigate without gambling the working system.
+
+## Cross-Browser Is a Claim You Have to Earn
+
+From the beginning, Stream Inspector had aimed at both major WebExtension worlds.
+
+Firefox.
+
+Chromium.
+
+Brave belonged to the second.
+
+One source tree was supposed to support both.
+
+That sounded clean in architecture documents.
+
+Reality was less polite.
+
+Firefox could keep background behavior in one style.
+
+Chromium's Manifest V3 relied on a service worker with a much more temporary life.
+
+Focus events could behave differently.
+
+Extension popups could affect browser focus.
+
+The browser could briefly report no focused window.
+
+A worker could wake after having forgotten everything that once existed only in memory.
+
+All of those details were tiny individually.
+
+Together they formed a different environment.
+
+Cross-browser support was not:
+
+*the code loads in both browsers.*
+
+It was:
+
+*the same user intent survives two different runtime models.*
+
+That was a much higher standard.
+
+## The Active Tab Was Not the Focused Window
+
+The Brave bug pushed that distinction into the open.
+
+At first, the extension had leaned too heavily on the idea of the currently focused normal browser window.
+
+Reasonable.
+
+Except operating-system focus is slippery.
+
+Click the desktop.
+
+Open the extension popup.
+
+Use a media key.
+
+Alt-Tab.
+
+A Chromium browser can temporarily report that no normal window owns focus.
+
+But none of those actions necessarily mean the user changed the playback target.
+
+The active tab still exists.
+
+The media is still there.
+
+The extension should not suddenly forget it.
+
+So the model had to become more precise.
+
+**Temporary focus loss does not mean target loss.**
+
+The last relevant normal browser window could remain meaningful.
+
+A real tab activation in the tracked window should matter immediately.
+
+A background window should not steal the target just because something activated there.
+
+If the current target tab closes, then rebuild.
+
+If a worker restarts, reconstruct from browser state instead of assuming memory survived.
+
+The bug was forcing the UI architecture to align with the deeper lesson the raw engine had already learned:
+
+**state must represent reality, not the accident of which callback fired last.**
+
+## A Small Fix With a Large Effect
+
+Once that lifecycle logic improved, the two browser worlds came closer together.
+
+Brave could retain the relevant target through temporary focus loss.
+
+A real tab switch still reset the playback as it should.
+
+Worker restart behavior became safer.
+
+Closing the target could trigger reconstruction.
+
+The extension stopped confusing:
+
+*the browser is not currently focused*
+
+with:
+
+*there is no playback target.*
+
+That sounds like a small fix.
+
+To the user, it was the difference between a functioning extension and a popup that claimed nothing existed.
+
+Many software victories are like that.
+
+The final patch is smaller than the amount of thinking required to understand why it is correct.
+
+## The Last Missing Button
+
+With the browser lifecycle stable enough, the final beta interaction could become real.
+
+**Copy for AiDM.**
+
+The button took the current structured playback state and turned it into one shell-safe argument fragment.
+
+Selected media.
+
+Captured User-Agent when available.
+
+Captured Referer when available.
+
+Selected subtitles.
+
+Canonical title.
+
+One explicit action.
+
+One clipboard write.
+
+No automatic execution.
+
+No hidden downloader.
+
+No browser trying to become AiDM.
+
+The boundary remained clean.
+
+The extension knew the browser.
+
+AiDM knew downloading.
+
+The button simply prepared the introduction.
+
+## A Beta, Not a Victory Lap
+
+Then something happened that would have felt impossible during the first AiDM attempt.
+
+The extension reached the end of its planned browser-side architecture.
+
+Not the end of testing.
+
+Not the end of bugs.
+
+Not the end of future features.
+
+But the planned beta workflow was there.
+
+Cross-browser network observation.
+
+Target-tab tracking.
+
+Media detection.
+
+Ranking.
+
+Subtitle intelligence.
+
+Title intelligence.
+
+Request context.
+
+Session retention.
+
+User selection.
+
+Clipboard handoff.
+
+Firefox and Brave behavior from one codebase.
+
+The repository could finally describe itself as:
+
+**feature-complete for the planned browser-side beta workflow.**
+
+That wording mattered.
+
+Feature-complete does not mean perfect.
+
+Beta does not mean finished forever.
+
+There were still websites I had not tested.
+
+Edge cases I had not seen.
+
+Stress tests still waiting.
+
+Future browser changes.
+
+Future bugs.
+
+Future fixes.
+
+The maintenance loop was already obvious:
+
+build.
+
+test.
+
+find bug.
+
+fix.
+
+test again.
+
+And repeat.
+
+That was not failure.
+
+That was software.
+
+## The Tag
+
+The project received its first beta tag:
+
+`v0.1.0-beta`
+
+A small string.
+
+A large psychological milestone.
+
+The repository I had created on August 7 and then avoided for twenty days was no longer an empty stage.
+
+The room that had once scared me enough to delay entering it now contained an actual working system.
+
+The engine could see.
+
+The UI could explain.
+
+The user could choose.
+
+The extension could package the browser context into a handoff.
+
+And both browser families were finally part of the same story.
+
+For the first time, the browser-side half of the architecture felt complete enough to stop adding major rooms and start testing the house.
+
+## Two Months Condensed Into One Button
+
+The funniest thing about the beta UI was how little it revealed about the work behind it.
+
+The user sees:
+
+**Copy for AiDM**
+
+Click.
+
+Copied.
+
+That is all.
+
+They do not see the weeks behind the button.
+
+The false cookie conclusion.
+
+The ablation experiments.
+
+The service-worker restarts.
+
+The ranking model.
+
+The fragment floods.
+
+The hidden subtitle MIME.
+
+The title gating.
+
+The stale-state boundaries.
+
+The shell quoting.
+
+The cross-browser focus logic.
+
+The argument contract.
+
+That is good interface design.
+
+Complexity should exist where it is needed.
+
+Not where the user has to suffer it.
+
+But for me, that button contained the entire journey.
+
+Because it was preparing exactly the thing premature AiDM had never known how to obtain reliably:
+
+the browser's side of the truth.
+
+## Meanwhile, the Other Half Woke Up
+
+There is another coincidence I cannot leave out.
+
+This story is still being written while development moves underneath it.
+
+The same day I am writing this chapter, the browser-side victory stopped being theoretical.
+
+The other half woke up.
+
+I returned to AiDM.
+
+Not to add another random feature.
+
+To make the downloader understand the language the extension had spent weeks learning to speak.
+
+That required more than adding a few command-line flags.
+
+AiDM's intelligence had been deliberately scattered across branches.
+
+YouTube.
+
+Torrent.
+
+Streaming.
+
+Bulk direct.
+
+Each branch had protected its own experiment.
+
+Now the downloader needed one stable brain before the handoff could land safely.
+
+So the branches were reconciled.
+
+Not flattened.
+
+Reconciled.
+
+The central router was treated like high-risk code.
+
+Conflicts were resolved by meaning, not by choosing one side mechanically.
+
+Routes were tested individually.
+
+Then tested together.
+
+Then tested again after streaming returned.
+
+Only after the house became one building could the new doorway be cut into the wall.
+
+And then, after roughly two months of work, the thing I had been waiting for finally happened.
+
+I will not tell the whole scene yet.
+
+But the outline is simple.
+
+A naked stream failed.
+
+The browser companion observed the same playback.
+
+It supplied what the browser knew.
+
+AiDM received it.
+
+Understood it.
+
+Classified the stream.
+
+Carried the context to yt-dlp.
+
+yt-dlp found the media fragments.
+
+And the download began.
+
+For the first time, the two projects were not merely designed to fit together.
+
+They actually did.
+
+That moment belongs to the next chapter.
+
+Because after two months of building two halves of one system, the first handshake deserves more than a paragraph.
+
+## The Broken Room Was No Longer Broken
+
+Back in the extension's own timeline, though, the significance was already clear.
+
+The browser problem that had once looked like a wall was no longer mysterious in the same way.
+
+Not solved universally.
+
+No software deserves that kind of claim.
+
+But understood.
+
+Observe.
+
+Classify.
+
+Rank.
+
+Preserve context.
+
+Let the user select.
+
+Export deliberately.
+
+Do not pretend to know what the browser never exposed.
+
+Do not add cookies because they sound powerful.
+
+Do not hardcode a site because one test frightened you.
+
+Do not confuse focus with identity.
+
+Do not confuse detection with usefulness.
+
+Do not confuse a working engine with a finished product.
+
+Those lessons had built something much stronger than the first idea of "make an extension that finds m3u8 links."
+
+The broken room had become one of the most carefully engineered rooms in the house.
+
+And now there was only one thing left to prove.
+
+Could the house finally use the door?
+
+---
+
+*Next: Chapter 14 — The First Handshake*
